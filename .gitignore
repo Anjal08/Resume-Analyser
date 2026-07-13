@@ -1,0 +1,21 @@
+# Ignore the interview prep folder as requested
+Interview-Prep/
+
+# Dependency directories
+node_modules/
+Backend/node_modules/
+Frontend/node_modules/
+
+# Local env files
+.env
+Backend/.env
+
+# Production build outputs
+Frontend/dist/
+dist/
+
+# OS/IDE files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
