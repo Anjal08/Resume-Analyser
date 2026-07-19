@@ -33,6 +33,31 @@
 
 ---
 
+## 📐 System Architecture & Data Flow
+
+```mermaid
+graph TD
+    subgraph Client [Frontend - React 19 & Vite]
+        A[React UI Components] --> B[Axios API Client]
+        B -->|withCredentials| C[HTTP-Only JWT Cookie]
+    end
+
+    subgraph Server [Backend - Express.js]
+        D[Express Router] --> E[Auth Middleware]
+        E --> F[Controllers]
+        F --> G[Mongoose Models]
+        F --> H[Gemini AI Service]
+        F --> I[Puppeteer PDF Service]
+    end
+
+    subgraph External [Database & APIs]
+        G --> J[(MongoDB Atlas)]
+        H --> K[Google Gemini API]
+    end
+```
+
+---
+
 ## 📂 Project Structure
 
 ```text
