@@ -1,0 +1,323 @@
+.learning-hub {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    
+    // Grid layout for top section
+    .hub-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+        
+        @media (max-width: 900px) {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .hub-card {
+        background-color: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 1rem;
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        
+        h3 {
+            margin: 0 0 1.25rem 0;
+            font-size: 1.1rem;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+    }
+
+    // Goal Card Specifics
+    .focus-score {
+        display: flex;
+        align-items: baseline;
+        gap: 0.75rem;
+        margin-bottom: 1.5rem;
+
+        .score-val {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(90deg, var(--success), #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            line-height: 1;
+        }
+        
+        .score-lbl {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+    }
+
+    .goal-section {
+        margin-bottom: 1.5rem;
+        
+        h4 {
+            margin: 0 0 0.5rem 0;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+        }
+        
+        p {
+            margin: 0;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+    }
+
+    .checklist {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+
+        .check-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            background: var(--bg-card);
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid var(--bg-hover);
+
+            .check-icon {
+                color: var(--text-secondary);
+                &.completed { color: var(--success); }
+            }
+            
+            span {
+                font-size: 0.95rem;
+                color: var(--text-primary);
+            }
+        }
+    }
+
+    // Topics Progress Bars
+    .topic-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+    }
+
+    .topic-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        
+        .topic-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            font-weight: 600;
+            
+            .t-name { color: var(--text-primary); }
+            .t-val { color: var(--accent-purple); }
+        }
+
+        .progress-bar {
+            height: 8px;
+            background-color: var(--border-color);
+            border-radius: 1rem;
+            overflow: hidden;
+
+            .progress-fill {
+                height: 100%;
+                background: linear-gradient(90deg, #3b82f6, var(--accent-purple));
+                border-radius: 1rem;
+                transition: width 1s ease-in-out;
+            }
+        }
+    }
+
+    // 14-Day Roadmap
+    .roadmap-timeline {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+        position: relative;
+        padding-left: 1rem;
+        
+        &::before {
+            content: '';
+            position: absolute;
+            left: 27px;
+            top: 10px;
+            bottom: 20px;
+            width: 2px;
+            background: var(--border-color);
+            z-index: 0;
+        }
+
+        .roadmap-day {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            padding: 0.75rem 0;
+            position: relative;
+            z-index: 1;
+
+            .day-icon {
+                width: 20px;
+                height: 20px;
+                border-radius: 50%;
+                background-color: var(--bg-card);
+                border: 2px solid var(--border-color);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                flex-shrink: 0;
+                margin-top: 2px;
+                
+                svg { opacity: 0; }
+                
+                &.completed {
+                    border-color: var(--success);
+                    background-color: rgba(74, 222, 128, 0.1);
+                    svg { opacity: 1; color: var(--success); }
+                }
+                
+                &.current {
+                    border-color: var(--accent-blue);
+                    background-color: rgba(88, 166, 255, 0.1);
+                    box-shadow: 0 0 10px rgba(88, 166, 255, 0.3);
+                    svg { opacity: 1; color: var(--accent-blue); }
+                }
+            }
+
+            .day-content {
+                display: flex;
+                flex-direction: column;
+                
+                .day-lbl {
+                    font-size: 0.75rem;
+                    color: var(--text-secondary);
+                    font-weight: 600;
+                    text-transform: uppercase;
+                }
+                
+                .day-title {
+                    font-size: 0.95rem;
+                    color: var(--text-primary);
+                    font-weight: 500;
+                    margin-top: 0.15rem;
+                }
+            }
+            
+            &.faded .day-content {
+                opacity: 0.5;
+            }
+        }
+    }
+
+    // Learning Resources
+    .resources-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        
+        .resource-btn {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-align: left;
+            
+            &:hover {
+                background: var(--border-color);
+                border-color: rgba(255, 255, 255, 0.2);
+                transform: translateY(-2px);
+                
+                svg {
+                    color: #3b82f6;
+                }
+            }
+            
+            svg {
+                color: var(--text-secondary);
+                transition: color 0.2s ease;
+            }
+        }
+    }
+
+    // AI Recommendation (Glassmorphism highlight)
+    .ai-recommendation {
+        background: linear-gradient(145deg, rgba(139, 92, 246, 0.15), rgba(59, 130, 246, 0.1));
+        border: 1px solid rgba(139, 92, 246, 0.3);
+        border-radius: 1rem;
+        padding: 1.5rem;
+        position: relative;
+        overflow: hidden;
+
+        &::before {
+            content: '';
+            position: absolute;
+            top: -50px;
+            right: -50px;
+            width: 150px;
+            height: 150px;
+            background: var(--accent-purple);
+            filter: blur(80px);
+            opacity: 0.3;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        h3 {
+            margin: 0 0 1rem 0;
+            color: #a78bfa;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .ai-text {
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+            margin-bottom: 1rem;
+        }
+
+        .rec-tags {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.25rem;
+
+            .r-tag {
+                background: rgba(59, 130, 246, 0.2);
+                color: #60a5fa;
+                border: 1px solid rgba(59, 130, 246, 0.4);
+                padding: 0.25rem 0.75rem;
+                border-radius: 2rem;
+                font-size: 0.8rem;
+                font-weight: 600;
+                display: flex;
+                align-items: center;
+                gap: 0.35rem;
+            }
+        }
+
+        .study-time {
+            font-size: 0.85rem;
+            color: #9ca3af;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+    }
+}

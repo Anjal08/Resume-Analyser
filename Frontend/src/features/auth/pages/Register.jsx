@@ -1,6 +1,9 @@
 import React,{useState} from 'react'
 import { useNavigate, Link } from 'react-router'
 import { useAuth } from '../hooks/useAuth'
+import Loading from '../../../components/Loading'
+import { GoogleLogin } from '@react-oauth/google'
+import "../auth.form.scss"
 
 const Register = () => {
 
@@ -9,22 +12,42 @@ const Register = () => {
     const [ email, setEmail ] = useState("")
     const [ password, setPassword ] = useState("")
 
-    const {loading,handleRegister} = useAuth()
+    const {loading, handleRegister, handleGoogleLogin} = useAuth()
     
     const handleSubmit = async (e) => {
         e.preventDefault()
-        await handleRegister({username,email,password})
-        navigate("/")
+        const success = await handleRegister({username,email,password})
+        if (success) {
+            navigate("/")
+        }
+    }
+
+    const onGoogleSuccess = async (credentialResponse) => {
+        const success = await handleGoogleLogin(credentialResponse.credential)
+        if (success) {
+            navigate('/')
+        }
     }
 
     if(loading){
-        return (<main><h1>Loading.......</h1></main>)
+        return <Loading />
     }
 
     return (
         <main>
             <div className="form-container">
                 <h1>Register</h1>
+                <p>Create an account to begin</p>
+
+                <div style={{display: 'flex', justifyContent: 'center', marginBottom: '1rem'}}>
+                    <GoogleLogin
+                        onSuccess={onGoogleSuccess}
+                        onError={() => console.log('Google Login Failed')}
+                        theme="filled_black"
+                    />
+                </div>
+
+                <div className='or-divider'><span>OR</span></div>
 
                 <form onSubmit={handleSubmit}>
 

@@ -39,4 +39,53 @@ interviewRouter.post("/resume/pdf/:interviewReportId", authMiddleware.authUser, 
 
 
 
+/**
+ * @route DELETE /api/interview/report/:interviewId
+ * @description Delete an interview report by interviewId.
+ * @access private
+ */
+interviewRouter.delete("/report/:interviewId", authMiddleware.authUser, interviewController.deleteInterviewReportController)
+
+/**
+ * @route POST /api/interview/evaluate
+ * @description Evaluate a mock interview answer.
+ * @access private
+ */
+interviewRouter.post("/evaluate", authMiddleware.authUser, interviewController.evaluateAnswerController)
+
+/**
+ * @route POST /api/interview/evaluate-final
+ * @description Generate final feedback for a completed mock interview.
+ * @access private
+ */
+interviewRouter.post("/evaluate-final", authMiddleware.authUser, interviewController.evaluateFinalController)
+
+/**
+ * @route POST /api/interview/mock
+ * @description Save a mock interview history.
+ * @access private
+ */
+interviewRouter.post("/mock", authMiddleware.authUser, interviewController.saveMockInterviewController)
+
+/**
+ * @route GET /api/interview/mock
+ * @description Get all mock interviews.
+ * @access private
+ */
+interviewRouter.get("/mock", authMiddleware.authUser, interviewController.getAllMockInterviewsController)
+
+/**
+ * @route GET /api/interview/mock/:historyId
+ * @description Get mock interview by ID.
+ * @access private
+ */
+interviewRouter.get("/mock/:historyId", authMiddleware.authUser, interviewController.getMockInterviewByIdController)
+
+/**
+ * @route DELETE /api/interview/mock/:historyId
+ * @description Delete a mock interview.
+ * @access private
+ */
+interviewRouter.delete("/mock/:historyId", authMiddleware.authUser, interviewController.deleteMockInterviewController)
+
 module.exports = interviewRouter

@@ -36,4 +36,39 @@ authRouter.get("/logout", authController.logoutUserController)
 authRouter.get("/get-me", authMiddleware.authUser, authController.getMeController)
 
 
+/**
+ * @route POST /api/auth/google-login
+ * @description Login or Register via Google OAuth
+ * @access Public
+ */
+authRouter.post("/google-login", authController.googleLoginController)
+
+/**
+ * @route POST /api/auth/forgot-password
+ * @description Request a password reset link
+ * @access Public
+ */
+authRouter.post("/forgot-password", authController.forgotPasswordController)
+
+/**
+ * @route POST /api/auth/reset-password/:token
+ * @description Reset password with valid token
+ * @access Public
+ */
+authRouter.post("/reset-password/:token", authController.resetPasswordController)
+
+/**
+ * @route POST /api/auth/change-password
+ * @description Change password of currently authenticated user
+ * @access Private
+ */
+authRouter.post("/change-password", authMiddleware.authUser, authController.changePasswordController)
+
+/**
+ * @route DELETE /api/auth/delete-account
+ * @description Delete currently authenticated user account
+ * @access Private
+ */
+authRouter.delete("/delete-account", authMiddleware.authUser, authController.deleteAccountController)
+
 module.exports = authRouter
