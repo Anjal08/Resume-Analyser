@@ -13,10 +13,10 @@ export const useInterview = () => {
         throw new Error("useInterview must be used within an InterviewProvider")
     }
 
-    const { loading, setLoading, report, setReport, reports, setReports } = context
+    const { loading, setLoading, generating, setGenerating, report, setReport, reports, setReports } = context
 
     const generateReport = async ({ jobDescription, selfDescription, resumeFile }) => {
-        setLoading(true)
+        setGenerating(true)
         let response = null
         try {
             response = await generateInterviewReport({ jobDescription, selfDescription, resumeFile })
@@ -27,7 +27,7 @@ export const useInterview = () => {
             const errorMsg = error.response?.data?.message || "Failed to generate interview strategy. Please ensure all required fields are filled correctly and the resume is a valid PDF."
             return { data: null, error: errorMsg }
         } finally {
-            setLoading(false)
+            setGenerating(false)
         }
     }
 
@@ -186,6 +186,6 @@ export const useInterview = () => {
         }
     }, [ interviewId ])
 
-    return { loading, report, reports, generateReport, getReportById, getReports, getResumePdf, getResumePdfBlob, deleteReport, evaluateMockAnswer, generateFinalFeedback, saveHistory, getHistory, getHistoryById, deleteHistory }
+    return { loading, generating, report, reports, generateReport, getReportById, getReports, getResumePdf, getResumePdfBlob, deleteReport, evaluateMockAnswer, generateFinalFeedback, saveHistory, getHistory, getHistoryById, deleteHistory }
 
 }

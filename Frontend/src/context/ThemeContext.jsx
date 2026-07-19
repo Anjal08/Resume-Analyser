@@ -12,9 +12,8 @@ export const ThemeProvider = ({ children }) => {
             return savedTheme;
         }
         
-        // System preference
-        const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-        return prefersDark ? 'dark' : 'light';
+        // Default to dark mode if no preference saved
+        return 'dark';
     };
 
     const [theme, setTheme] = useState(getInitialTheme);

@@ -8,9 +8,10 @@ import { useOutletContext } from 'react-router'
 import { motion } from 'framer-motion'
 
 import ScanningLoader from '../../../components/ScanningLoader'
+import Loading from '../../../components/Loading'
 
 const Home = () => {
-    const { loading, generateReport, reports, deleteReport } = useInterview()
+    const { loading, generating, generateReport, reports, deleteReport } = useInterview()
     const { user } = useAuth()
     const context = useOutletContext()
     const openAuthModal = context?.openAuthModal
@@ -113,8 +114,12 @@ const Home = () => {
         }));
     }, [reports]);
 
-    if (loading) {
+    if (generating) {
         return <ScanningLoader />
+    }
+
+    if (loading) {
+        return <Loading />
     }
 
     const containerVariants = {
