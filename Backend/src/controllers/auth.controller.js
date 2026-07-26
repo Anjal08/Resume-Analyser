@@ -217,15 +217,36 @@ async function resetPasswordController(req, res) {
  * @access Public
  */
 async function googleLoginController(req, res) {
-    const { credential } = req.body;
+    const { credential, access_token } = req.body;
 
     try {
-        const ticket = await client.verifyIdToken({
-            idToken: credential,
-            audience: process.env.GOOGLE_CLIENT_ID,
-        });
-        const payload = ticket.getPayload();
-        const { email, name, sub, picture } = payload;
+        let email, name, sub, picture;
+
+        if (access_token) {
+            const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                headers: { Authorization: `Bearer ${access_token}` }
+            });
+            if (!response.ok) {
+                throw new Error("Failed to fetch user info from Google");
+            }
+            const payload = await response.json();
+            email = payload.email;
+            name = payload.name;
+            sub = payload.sub;
+            picture = payload.picture;
+        } else if (credential) {
+            const ticket = await client.verifyIdToken({
+                idToken: credential,
+                audience: process.env.GOOGLE_CLIENT_ID,
+            });
+            const payload = ticket.getPayload();
+            email = payload.email;
+            name = payload.name;
+            sub = payload.sub;
+            picture = payload.picture;
+        } else {
+            return res.status(400).json({ message: "No Google token provided" });
+        }
 
         let user = await userModel.findOne({ email });
 

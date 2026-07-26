@@ -47,6 +47,13 @@ interviewRouter.post("/resume/pdf/:interviewReportId", authMiddleware.authUser, 
 interviewRouter.delete("/report/:interviewId", authMiddleware.authUser, interviewController.deleteInterviewReportController)
 
 /**
+ * @route POST /api/interview/next-question
+ * @description generate next interview question on the basis of history, resume and job description.
+ * @access private
+ */
+interviewRouter.post("/next-question", authMiddleware.authUser, interviewController.generateNextQuestionController)
+
+/**
  * @route POST /api/interview/evaluate
  * @description Evaluate a mock interview answer.
  * @access private

@@ -1,4 +1,4 @@
-import { getAllInterviewReports, generateInterviewReport, getInterviewReportById, generateResumePdf, deleteInterviewReport, evaluateAnswer, evaluateFinal, saveMockInterview, getAllMockInterviews, getMockInterviewById, deleteMockInterview } from "../services/interview.api"
+import { getAllInterviewReports, generateInterviewReport, getInterviewReportById, generateResumePdf, deleteInterviewReport, evaluateAnswer, evaluateFinal, saveMockInterview, getAllMockInterviews, getMockInterviewById, deleteMockInterview, getNextQuestion } from "../services/interview.api"
 import { useContext, useEffect } from "react"
 import { InterviewContext } from "../interview.context"
 import { useParams } from "react-router"
@@ -178,6 +178,16 @@ export const useInterview = () => {
         }
     }
 
+    const getNextInterviewQuestion = async (data) => {
+        try {
+            const response = await getNextQuestion(data);
+            return response.questionData;
+        } catch (error) {
+            console.error("Error fetching next question:", error);
+            return null;
+        }
+    }
+
     useEffect(() => {
         if (interviewId) {
             getReportById(interviewId)
@@ -186,6 +196,6 @@ export const useInterview = () => {
         }
     }, [ interviewId ])
 
-    return { loading, generating, report, reports, generateReport, getReportById, getReports, getResumePdf, getResumePdfBlob, deleteReport, evaluateMockAnswer, generateFinalFeedback, saveHistory, getHistory, getHistoryById, deleteHistory }
+    return { loading, generating, report, reports, generateReport, getReportById, getReports, getResumePdf, getResumePdfBlob, deleteReport, evaluateMockAnswer, generateFinalFeedback, saveHistory, getHistory, getHistoryById, deleteHistory, getNextQuestion: getNextInterviewQuestion }
 
 }

@@ -212,24 +212,34 @@ const evaluationSchema = z.object({
     finalScore: z.number().describe("The final overall score between 1 and 10"),
     metrics: z.object({
         technicalAccuracy: z.number().describe("Score for technical accuracy (/10)"),
-        communication: z.number().describe("Score for communication and clarity (/10)"),
+        conceptClarity: z.number().describe("Score for conceptual clarity (/10)"),
+        problemSolving: z.number().describe("Score for problem solving approach (/10)"),
+        projectKnowledge: z.number().describe("Score for knowledge of projects (/10)"),
         confidence: z.number().describe("Score for confidence and tone (/10)"),
-        problemSolving: z.number().describe("Score for problem solving approach (/10)")
+        communication: z.number().describe("Score for communication and structure (/10)")
     }),
     strengths: z.array(z.string()).describe("List of strengths in the candidate's answer"),
     weaknesses: z.array(z.string()).describe("List of weaknesses or missing points"),
     suggestions: z.array(z.string()).describe("Actionable suggestions for improvement (bullet points)"),
-    improvedAnswer: z.string().describe("A complete, ideal, sample answer")
+    improvedAnswer: z.string().describe("A complete, ideal, sample answer"),
+    communicationAnalysis: z.object({
+        speakingConfidence: z.number().describe("Percentage score (0-100) for speaking confidence"),
+        fluency: z.number().describe("Percentage score (0-100) for fluency and flow"),
+        grammar: z.number().describe("Percentage score (0-100) for grammatical correctness"),
+        clarity: z.number().describe("Percentage score (0-100) for clarity of speech and explanation"),
+        fillerWordsCount: z.number().describe("Estimated count of filler words (um, uh, basically, actually, like) found in their response"),
+        fillerWordsFound: z.array(z.string()).describe("Specific filler words detected in their text")
+    }).describe("Communication analysis breakdown")
 })
 
 async function evaluateMockInterviewAnswer({ question, userAnswer, intention, expectedAnswer, role, difficulty }) {
     
     let difficultyInstructions = "";
-    if (difficulty === "Beginner") {
+    if (difficulty === "Beginner" || difficulty === "Fresher") {
         difficultyInstructions = "More lenient scoring. Accept partial answers. Provide hints in suggestions. Encourage learning. Be very supportive.";
     } else if (difficulty === "Intermediate") {
         difficultyInstructions = "Moderate strictness. Expect reasonable explanations and decent technical depth.";
-    } else if (difficulty === "Advanced") {
+    } else if (difficulty === "Advanced" || difficulty === "Senior" || difficulty === "FAANG") {
         difficultyInstructions = "Strict grading. Expect highly optimized answers. Penalize incorrect terminology. Judge like a real Senior/Staff level interviewer.";
     }
 
@@ -248,7 +258,9 @@ async function evaluateMockInterviewAnswer({ question, userAnswer, intention, ex
     Candidate's Answer: ${userAnswer}
     
     Evaluate the candidate's answer based on the intention, expected points, and the difficulty level. 
-    Provide scores out of 10 for each metric, lists of strengths/weaknesses, actionable suggestions, and a perfect ideal answer.`
+    Provide scores out of 10 for each metric, lists of strengths/weaknesses, actionable suggestions, and a perfect ideal answer.
+    
+    In addition, analyze the candidate's verbal delivery and communication based on the text. Assess their grammar, fluency, clarity, and confidence. Find and count any filler words used in the answer transcript (specifically: "um", "uh", "basically", "actually", "like").`
 
     const response = await ai.models.generateContent({
         model: "gemini-2.5-flash",
@@ -294,4 +306,56 @@ async function generateFinalInterviewFeedback({ role, difficulty, qnaHistory }) 
     return JSON.parse(response.text)
 }
 
-module.exports = { generateInterviewReport, generateResumePdf, evaluateMockInterviewAnswer, generateFinalInterviewFeedback }
+const nextQuestionSchema = z.object({
+    question: z.string().describe("The interview question to ask next"),
+    intention: z.string().describe("The reason/intention behind asking this specific question"),
+    expectedAnswer: z.string().describe("The ideal points/topics the candidate should cover in their answer")
+})
+
+async function generateNextQuestion({ resume, jobDescription, role, difficulty, qnaHistory, currentRound }) {
+    const prompt = `You are an expert technical interviewer conducting a mock interview for the role of ${role || "Software Engineer"}.
+    Difficulty Level: ${difficulty || "Intermediate"}
+    Candidate's Resume Content: ${resume || "Not provided"}
+    Job Description: ${jobDescription || "Not provided"}
+    
+    Current Interview Round: ${currentRound} (out of 5)
+    
+    Guidelines for the current round:
+    - Round 1 (Introductory): Ask an icebreaker or general introductory question tailored to their profile (e.g. "Tell me about yourself" or "What motivated you to apply for this ${role} role?").
+    - Round 2 (Resume-based): Ask about a project, skill, or experience mentioned in their resume.
+    - Round 3 (Deep-dive): Ask a deeper technical follow-up or conceptually challenging question based on their previous answers/skills.
+    - Round 4 (Architecture / System Design): Ask about system design, overall architecture, or how they structured a component in their projects.
+    - Round 5 (Advanced / Scaling / Edge Cases): Ask how they would scale an application, handle extreme loads, handle security/auth issues, or solve an advanced problem.
+    
+    Complete QnA History so far (use this to ask contextual follow-up questions instead of starting a new topic if they just answered):
+    ${JSON.stringify(qnaHistory, null, 2)}
+    
+    CRITICAL INSTRUCTIONS:
+    1. Ask exactly ONE clear and specific question. Do not ask multiple questions.
+    2. Adapt dynamically! If the last answer in the QnA History was brief, incomplete, or interesting, ask a direct follow-up question about it (e.g. "Why did you choose React Context instead of Redux?" or "If this grew to 1 million users, what would change?").
+    3. Ensure the question's difficulty matches the level: ${difficulty}.
+    4. Provide the interviewer's intention and the expected answer details for evaluation purposes.`
+
+    try {
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: zodToJsonSchema(nextQuestionSchema),
+            }
+        });
+        return JSON.parse(response.text);
+    } catch (e) {
+        console.error("Gemini next-question call failed:", e);
+        throw e;
+    }
+}
+
+module.exports = { 
+    generateInterviewReport, 
+    generateResumePdf, 
+    evaluateMockInterviewAnswer, 
+    generateFinalInterviewFeedback,
+    generateNextQuestion
+}

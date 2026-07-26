@@ -116,3 +116,11 @@ export const deleteMockInterview = async (historyId) => {
     const response = await api.delete(`/api/interview/mock/${historyId}`)
     return response.data
 }
+
+/**
+ * @description Service to generate the next interview question.
+ */
+export const getNextQuestion = async (data) => {
+    const response = await api.post('/api/interview/next-question', data)
+    return response.data
+}

@@ -1,5 +1,5 @@
 const pdfParse = require("pdf-parse")
-const { generateInterviewReport, generateResumePdf, evaluateMockInterviewAnswer } = require("../services/ai.service")
+const { generateInterviewReport, generateResumePdf, evaluateMockInterviewAnswer, generateNextQuestion } = require("../services/ai.service")
 const interviewReportModel = require("../models/interviewReport.model")
 
 
@@ -139,7 +139,7 @@ async function deleteInterviewReportController(req, res) {
  */
 async function evaluateAnswerController(req, res) {
     const { evaluateMockInterviewAnswer } = require("../services/ai.service");
-    const { question, userAnswer, intention, expectedAnswer, role, difficulty } = req.body;
+    const { question, userAnswer, intention, expectedAnswer, role, difficulty, speakingSpeed, isVoice } = req.body;
 
     if (!question || !userAnswer) {
         return res.status(400).json({ message: "Question and User Answer are required." });
@@ -147,6 +147,12 @@ async function evaluateAnswerController(req, res) {
 
     try {
         const evaluation = await evaluateMockInterviewAnswer({ question, userAnswer, intention, expectedAnswer, role, difficulty });
+        
+        if (evaluation && evaluation.communicationAnalysis) {
+            evaluation.communicationAnalysis.speakingSpeed = speakingSpeed || 0;
+            evaluation.communicationAnalysis.isVoice = !!isVoice;
+        }
+
         res.status(200).json({
             message: "Answer evaluated successfully.",
             evaluation
@@ -266,6 +272,36 @@ async function deleteMockInterviewController(req, res) {
 }
 
 
+/**
+ * @description Controller to generate next interview question.
+ */
+async function generateNextQuestionController(req, res) {
+    const { resume, jobDescription, role, difficulty, qnaHistory, currentRound } = req.body;
+
+    if (currentRound === undefined) {
+        return res.status(400).json({ message: "currentRound is required." });
+    }
+
+    try {
+        const nextQuestionData = await generateNextQuestion({
+            resume,
+            jobDescription,
+            role,
+            difficulty,
+            qnaHistory,
+            currentRound
+        });
+
+        res.status(200).json({
+            message: "Next question generated successfully.",
+            questionData: nextQuestionData
+        });
+    } catch (error) {
+        console.error("Error generating next question:", error);
+        res.status(500).json({ message: "Failed to generate next question." });
+    }
+}
+
 module.exports = { 
     generateInterViewReportController, 
     getInterviewReportByIdController, 
@@ -277,5 +313,6 @@ module.exports = {
     saveMockInterviewController,
     getAllMockInterviewsController,
     getMockInterviewByIdController,
-    deleteMockInterviewController
+    deleteMockInterviewController,
+    generateNextQuestionController
 }

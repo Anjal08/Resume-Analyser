@@ -25,10 +25,10 @@ export const useAuth = () => {
         }
     }
 
-    const handleGoogleLogin = async (credential) => {
+    const handleGoogleLogin = async (payload) => {
         setLoading(true)
         try {
-            const data = await googleLogin(credential)
+            const data = await googleLogin(payload)
             setUser(data.user)
             toast.success("Google Login successful!");
             return true;

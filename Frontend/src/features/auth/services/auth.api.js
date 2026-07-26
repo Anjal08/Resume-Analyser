@@ -95,9 +95,9 @@ export async function resetPassword(token, password) {
     }
 }
 
-export async function googleLogin(credential) {
+export async function googleLogin(payload) {
     try {
-        const response = await api.post("/api/auth/google-login", { credential })
+        const response = await api.post("/api/auth/google-login", payload)
         return response.data
     } catch (err) {
         console.log(err)

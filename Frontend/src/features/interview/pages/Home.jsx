@@ -213,15 +213,15 @@ const Home = () => {
                                             ) : (
                                                 <>
                                                     <p className='dropzone__title'>Click to upload or drag &amp; drop</p>
-                                                    <p className='dropzone__subtitle'>PDF or DOCX (Max 5MB)</p>
+                                                    <p className='dropzone__subtitle'>PDF (Max 10MB)</p>
                                                 </>
                                             )}
                                             <input 
-                                                hidden 
+                                                style={{ display: 'none' }}
                                                 type='file' 
                                                 id='resume' 
                                                 name='resume' 
-                                                accept='.pdf,.docx'
+                                                accept='.pdf,application/pdf'
                                                 onChange={handleFileChange}
                                             />
                                         </label>

@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router'
 import { useInterview } from '../hooks/useInterview'
+import { useAuth } from '../../auth/hooks/useAuth'
 import '../style/mock-interview.scss'
-import { Loader, Send, Star, Target, Brain, Award, MessageSquare, User, Bot, CheckCircle, Download, RotateCcw, Trophy } from 'lucide-react'
+import { Loader, Send, Star, Target, Brain, Award, MessageSquare, User, Bot, CheckCircle, Download, RotateCcw, Trophy, Mic, Square, Play, Volume2 } from 'lucide-react'
 
 const ROLES = [
     'Software Engineer',
@@ -16,7 +17,9 @@ const ROLES = [
 const MockInterview = () => {
     const { interviewId } = useParams()
     const navigate = useNavigate()
-    const { report, getReportById, loading, evaluateMockAnswer, generateFinalFeedback, saveHistory } = useInterview()
+    const { report, getReportById, loading, evaluateMockAnswer, generateFinalFeedback, saveHistory, getNextQuestion } = useInterview()
+    const { user } = useAuth()
+    const candidateName = user?.name || 'Anjali'
 
     // Wizard/Interview States
     const [ interviewStep, setInterviewStep ] = useState('initialLoading') // initialLoading -> modeSelection -> difficultySelection -> ready -> interviewing -> finished
@@ -24,7 +27,6 @@ const MockInterview = () => {
     const [ mode, setMode ] = useState('Quick Practice')
     const [ difficulty, setDifficulty ] = useState('Intermediate')
 
-    const [ allQuestions, setAllQuestions ] = useState([]) 
     const [ activeQuestions, setActiveQuestions ] = useState([]) 
     const [ currentIndex, setCurrentIndex ] = useState(0)
     
@@ -37,6 +39,146 @@ const MockInterview = () => {
     
     const messagesEndRef = useRef(null)
     const chatContainerRef = useRef(null)
+
+    // Voice & Timer States
+    const [elapsedTime, setElapsedTime] = useState(0)
+    const [isRecording, setIsRecording] = useState(false)
+    const [audioUrl, setAudioUrl] = useState(null)
+    const [recordingDuration, setRecordingDuration] = useState(0)
+    const [isVoiceUsed, setIsVoiceUsed] = useState(false)
+
+    const recognitionRef = useRef(null)
+    const mediaRecorderRef = useRef(null)
+    const audioChunksRef = useRef([])
+    const recIntervalRef = useRef(null)
+    const audioRef = useRef(null)
+
+    // Interview Elapsed Timer
+    useEffect(() => {
+        let timer;
+        if (interviewStep === 'interviewing') {
+            timer = setInterval(() => {
+                setElapsedTime(prev => prev + 1);
+            }, 1000);
+        } else {
+            setElapsedTime(0);
+        }
+        return () => clearInterval(timer);
+    }, [interviewStep]);
+
+    const formatTime = (seconds) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    // Initialize Web Speech API for transcription
+    useEffect(() => {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (SpeechRecognition) {
+            const rec = new SpeechRecognition();
+            rec.continuous = true;
+            rec.interimResults = true;
+            rec.lang = 'en-US';
+
+            rec.onresult = (event) => {
+                let transcript = "";
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        transcript += event.results[i][0].transcript;
+                    }
+                }
+                if (transcript) {
+                    setInputText(prev => prev + (prev ? " " : "") + transcript);
+                }
+            };
+
+            rec.onerror = (e) => {
+                console.error("Speech recognition error:", e);
+            };
+
+            recognitionRef.current = rec;
+        }
+    }, []);
+
+    const startRecording = async () => {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            alert("Your browser does not support audio recording.");
+            return;
+        }
+
+        try {
+            audioChunksRef.current = [];
+            setAudioUrl(null);
+            setRecordingDuration(0);
+            setIsVoiceUsed(true);
+
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const mediaRecorder = new MediaRecorder(stream);
+            
+            mediaRecorder.ondataavailable = (e) => {
+                if (e.data.size > 0) {
+                    audioChunksRef.current.push(e.data);
+                }
+            };
+
+            mediaRecorder.onstop = () => {
+                const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+                const url = URL.createObjectURL(audioBlob);
+                setAudioUrl(url);
+                stream.getTracks().forEach(track => track.stop());
+            };
+
+            mediaRecorderRef.current = mediaRecorder;
+            mediaRecorder.start();
+
+            if (recognitionRef.current) {
+                recognitionRef.current.start();
+            }
+
+            setIsRecording(true);
+
+            recIntervalRef.current = setInterval(() => {
+                setRecordingDuration(prev => prev + 1);
+            }, 1000);
+
+        } catch (err) {
+            console.error("Failed to start recording:", err);
+            alert("Could not access microphone. Please check permissions.");
+        }
+    };
+
+    const stopRecording = () => {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+            mediaRecorderRef.current.stop();
+        }
+        if (recognitionRef.current) {
+            recognitionRef.current.stop();
+        }
+        if (recIntervalRef.current) {
+            clearInterval(recIntervalRef.current);
+        }
+        setIsRecording(false);
+    };
+
+    const playRecording = () => {
+        if (audioUrl) {
+            if (!audioRef.current) {
+                audioRef.current = new Audio(audioUrl);
+            } else {
+                audioRef.current.src = audioUrl;
+            }
+            audioRef.current.play();
+        }
+    };
+
+    const reRecord = () => {
+        setInputText("");
+        setAudioUrl(null);
+        setRecordingDuration(0);
+        setIsVoiceUsed(false);
+        startRecording();
+    };
 
     // Auto-scroll
     const scrollToBottom = () => {
@@ -54,9 +196,8 @@ const MockInterview = () => {
         }
     }, [ interviewId ])
 
-    // **BUG FIX**: Reset State on Mount & Unmount
+    // Reset State on Mount & Unmount
     useEffect(() => {
-        // Clear everything when entering the page to avoid "Previous Conversation" bug
         setMessages([]);
         setInterviewStep('initialLoading');
         setCurrentIndex(0);
@@ -65,7 +206,6 @@ const MockInterview = () => {
         setInputText("");
         
         return () => {
-            // Cleanup on unmount
             setMessages([]);
             setInterviewStep('initialLoading');
             setActiveQuestions([]);
@@ -78,10 +218,6 @@ const MockInterview = () => {
             const foundRole = ROLES.find(r => report.title && report.title.toLowerCase().includes(r.toLowerCase()))
             const assignedRole = foundRole || report.title || 'Software Engineer'
             setRole(assignedRole)
-
-            const techQs = (report.technicalQuestions || []).map(q => ({ ...q, type: 'Technical' }))
-            const behavQs = (report.behavioralQuestions || []).map(q => ({ ...q, type: 'Behavioral' }))
-            setAllQuestions([ ...techQs, ...behavQs ])
 
             // Simulate AI "typing" the first big message
             setIsTyping(true)
@@ -97,7 +233,7 @@ const MockInterview = () => {
                         role: assignedRole,
                         projects: 3, // Mocked for UI polish
                         skills: 'React • Node.js • Python • System Design', // Mocked for UI polish
-                        questions: techQs.length + behavQs.length,
+                        questions: 5,
                         time: '15-20 Minutes'
                     },
                     quickReplies: [
@@ -126,8 +262,8 @@ const MockInterview = () => {
                                 <div className='dots'><span></span><span></span><span></span></div>
                                 <div style={{marginTop: '0.5rem', fontSize: '0.85rem', color: '#8b949e'}}>
                                     {evalStatus === 'generating_final' 
-                                        ? '🤖 AI is generating your final report...' 
-                                        : '🤖 AI Interviewer is preparing...'}
+                                         ? '🤖 AI is generating your final report...' 
+                                         : '🤖 AI Interviewer is preparing...'}
                                 </div>
                             </div>
                         </div>
@@ -159,9 +295,10 @@ const MockInterview = () => {
                     type: 'setup',
                     text: `Great choice! 🎯\n\nYou selected **${reply.value}**.\n\nNow choose your difficulty.`,
                     quickReplies: [
-                        { label: 'Beginner', value: 'Beginner', actionType: 'difficulty', grid: true },
+                        { label: 'Fresher', value: 'Fresher', actionType: 'difficulty', grid: true },
                         { label: 'Intermediate', value: 'Intermediate', actionType: 'difficulty', grid: true },
-                        { label: 'Advanced', value: 'Advanced', actionType: 'difficulty', grid: true }
+                        { label: 'Senior', value: 'Senior', actionType: 'difficulty', grid: true },
+                        { label: 'FAANG', value: 'FAANG', actionType: 'difficulty', grid: true }
                     ]
                 }])
             } else if (reply.actionType === 'difficulty') {
@@ -171,7 +308,7 @@ const MockInterview = () => {
                     id: Date.now(),
                     sender: 'ai',
                     type: 'setup',
-                    text: `Perfect!\n\nI'll evaluate every answer in real time and provide:\n✓ Technical Accuracy\n✓ Communication\n✓ Confidence\n✓ Suggestions\n✓ Ideal Answer\n\nReady?`,
+                    text: `Perfect!\n\nI'll evaluate every answer in real time and provide:\n✓ Technical Accuracy\n✓ Concept Clarity\n✓ Problem Solving\n✓ Project Knowledge\n✓ Confidence\n✓ Communication\n\nReady?`,
                     quickReplies: [
                         { label: 'Start Interview', value: 'start', actionType: 'start' }
                     ]
@@ -183,53 +320,91 @@ const MockInterview = () => {
         }, 800)
     }
 
-    const startInterviewFlow = (selectedMode) => {
+    const startInterviewFlow = async (selectedMode) => {
         setInterviewStep('interviewing')
-        let selectedQuestions = []
-
-        if (selectedMode === 'Quick Practice') {
-            const techQs = allQuestions.filter(q => q.type === 'Technical').sort(() => 0.5 - Math.random())
-            const behavQs = allQuestions.filter(q => q.type === 'Behavioral').sort(() => 0.5 - Math.random())
-            selectedQuestions = [ ...techQs.slice(0, 3), ...behavQs.slice(0, 2) ]
-            if (selectedQuestions.length < 5) selectedQuestions = allQuestions.slice(0, 5)
-        } else {
-            selectedQuestions = [ ...allQuestions ]
-        }
-
-        setActiveQuestions(selectedQuestions)
         setCurrentIndex(0)
-        
+        setIsTyping(true)
+
+        // Show introduction message
         setMessages(prev => [...prev, {
             id: Date.now(),
             sender: 'ai',
-            type: 'question',
-            text: selectedQuestions[0].question,
-            badge: selectedQuestions[0].type
+            type: 'intro',
+            text: `Hi ${candidateName}, welcome to your ${role} interview. I have analyzed your resume and the job description. I'll ask technical and behavioral questions based on your profile. Let's begin.`
         }])
+
+        try {
+            const firstQuestionData = await getNextQuestion({
+                resume: report.resume,
+                jobDescription: report.jobDescription,
+                role,
+                difficulty,
+                qnaHistory: [],
+                currentRound: 1
+            });
+
+            if (firstQuestionData) {
+                setActiveQuestions([firstQuestionData]);
+                setMessages(prev => [...prev, {
+                    id: Date.now() + 1,
+                    sender: 'ai',
+                    type: 'question',
+                    text: firstQuestionData.question,
+                    badge: `Round 1: Introductory`,
+                    intention: firstQuestionData.intention,
+                    expectedAnswer: firstQuestionData.expectedAnswer
+                }]);
+            } else {
+                throw new Error("Failed to generate first question");
+            }
+        } catch (error) {
+            console.error(error);
+            setMessages(prev => [...prev, {
+                id: Date.now() + 1,
+                sender: 'ai',
+                type: 'error',
+                text: "Sorry, I had trouble starting the interview. Please try again."
+            }]);
+        } finally {
+            setIsTyping(false);
+        }
     }
 
     const handleSendMessage = async (e) => {
         if (e) e.preventDefault();
         if (!inputText.trim() || isTyping || evalStatus || interviewStep !== 'interviewing') return;
 
-        const currentQ = activeQuestions[currentIndex];
+        // If user submits while recording, stop recording first
+        if (isRecording) {
+            stopRecording();
+        }
+
+        const currentQ = activeQuestions[activeQuestions.length - 1];
         const userMessage = inputText.trim();
         
         setMessages(prev => [...prev, { id: Date.now(), sender: 'user', text: userMessage }])
         setInputText("")
         
-        // Show evaluating status instead of standard typing
         setEvalStatus('evaluating');
+
+        // Calculate WPM if voice was used
+        let speakingSpeed = 0;
+        if (isVoiceUsed && recordingDuration > 0) {
+            const wordCount = userMessage.split(/\s+/).filter(Boolean).length;
+            speakingSpeed = Math.round((wordCount / recordingDuration) * 60);
+        }
 
         // Evaluate Answer
         const evaluation = await evaluateMockAnswer({
             question: currentQ.question,
             userAnswer: userMessage,
             intention: currentQ.intention,
-            expectedAnswer: currentQ.answer,
+            expectedAnswer: currentQ.expectedAnswer,
             role,
-            difficulty
-        })
+            difficulty,
+            speakingSpeed,
+            isVoice: isVoiceUsed
+        });
 
         // Update QnA History
         const newQna = {
@@ -237,44 +412,84 @@ const MockInterview = () => {
             userAnswer: userMessage,
             aiScore: evaluation?.finalScore || 0,
             aiFeedback: evaluation?.suggestions?.join(" ") || "No feedback provided.",
-            intention: currentQ.intention
+            intention: currentQ.intention,
+            isVoice: isVoiceUsed,
+            voiceMetrics: evaluation?.communicationAnalysis ? {
+                ...evaluation.communicationAnalysis,
+                speakingSpeed
+            } : null
         };
-        
-        setQnaHistory(prev => {
-            const updated = [...prev, newQna];
-            
-            // Remove eval status
-            setEvalStatus(null);
 
-            // Add Feedback Message
-            setMessages(msgPrev => [...msgPrev, {
-                id: Date.now(),
-                sender: 'ai',
-                type: 'feedback',
-                evaluation: evaluation || { finalScore: 0, feedback: "Evaluation failed.", improvedAnswer: "" }
-            }])
+        // Reset voice state for next question
+        setAudioUrl(null);
+        setRecordingDuration(0);
+        setIsVoiceUsed(false);
 
-            // Prepare Next Question
-            const nextIndex = currentIndex + 1;
-            if (nextIndex < activeQuestions.length) {
-                setIsTyping(true)
-                setTimeout(() => {
+        const updatedHistory = [...qnaHistory, newQna];
+        setQnaHistory(updatedHistory);
+        setEvalStatus(null);
+
+        // Add Feedback Message
+        setMessages(msgPrev => [...msgPrev, {
+            id: Date.now(),
+            sender: 'ai',
+            type: 'feedback',
+            evaluation: evaluation || { finalScore: 0, feedback: "Evaluation failed.", improvedAnswer: "" }
+        }]);
+
+        // Proceed to next question or finish
+        const nextRound = updatedHistory.length + 1;
+        const maxRounds = 5;
+
+        if (nextRound <= maxRounds) {
+            setIsTyping(true);
+            try {
+                const nextQuestionData = await getNextQuestion({
+                    resume: report.resume,
+                    jobDescription: report.jobDescription,
+                    role,
+                    difficulty,
+                    qnaHistory: updatedHistory,
+                    currentRound: nextRound
+                });
+
+                if (nextQuestionData) {
+                    setActiveQuestions(prev => [...prev, nextQuestionData]);
+                    setCurrentIndex(nextRound - 1);
+                    
+                    let roundBadge = "";
+                    if (nextRound === 2) roundBadge = "Round 2: Resume-based";
+                    else if (nextRound === 3) roundBadge = "Round 3: Technical Deep-dive";
+                    else if (nextRound === 4) roundBadge = "Round 4: Architecture & Design";
+                    else if (nextRound === 5) roundBadge = "Round 5: Advanced & Scaling";
+
                     setMessages(msgPrev => [...msgPrev, {
                         id: Date.now(),
                         sender: 'ai',
                         type: 'question',
-                        text: activeQuestions[nextIndex].question,
-                        badge: activeQuestions[nextIndex].type
-                    }])
-                    setCurrentIndex(nextIndex)
-                    setIsTyping(false)
-                }, 1000)
-            } else {
-                // End of Interview -> Generate Final Report
-                finishInterview(updated);
+                        text: nextQuestionData.question,
+                        badge: roundBadge,
+                        intention: nextQuestionData.intention,
+                        expectedAnswer: nextQuestionData.expectedAnswer
+                    }]);
+                } else {
+                    throw new Error("Failed to generate next question");
+                }
+            } catch (error) {
+                console.error(error);
+                setMessages(msgPrev => [...msgPrev, {
+                    id: Date.now(),
+                    sender: 'ai',
+                    type: 'error',
+                    text: "Sorry, I encountered an error generating the next question. Let's finish the interview here."
+                }]);
+                finishInterview(updatedHistory);
+            } finally {
+                setIsTyping(false);
             }
-            return updated;
-        });
+        } else {
+            finishInterview(updatedHistory);
+        }
     }
 
     const finishInterview = async (finalQnaHistory) => {
@@ -346,17 +561,22 @@ const MockInterview = () => {
                 <div className='chat-header-info'>
                     <h2>AI Mock Interview</h2>
                     <div className='ai-status-badge'>AI Ready</div>
+                    {interviewStep === 'interviewing' && (
+                        <div style={{fontSize: '0.85rem', color: '#8b949e', background: 'rgba(255,255,255,0.05)', padding: '0.2rem 0.6rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.1)', marginLeft: '1rem', display: 'inline-block'}}>
+                            ⏱ Elapsed: {formatTime(elapsedTime)}
+                        </div>
+                    )}
                 </div>
                 <div className='chat-progress'>
                     {interviewStep === 'finished' ? 'Completed' : 
                      interviewStep === 'interviewing' ? (
-                         <>
-                            <span>Question {currentIndex + 1} of {activeQuestions.length}</span>
+                          <>
+                            <span>Question {currentIndex + 1} of 5</span>
                             <div className='progress-bar-container'>
-                                <div className='progress-fill' style={{width: `${((currentIndex + 1)/activeQuestions.length)*100}%`}}></div>
+                                <div className='progress-fill' style={{width: `${((currentIndex + 1)/5)*100}%`}}></div>
                             </div>
-                         </>
-                     ) : 'Setup'}
+                          </>
+                      ) : 'Setup'}
                 </div>
             </header>
 
@@ -370,7 +590,7 @@ const MockInterview = () => {
                             
                             <div className='chat-bubble-container' style={{width: msg.type === 'dashboard' ? '100%' : 'auto'}}>
                                 <div className={`chat-bubble ${msg.type === 'dashboard' ? 'msg-dashboard' : ''}`}>
-                                    {(msg.type === 'welcome' || msg.type === 'setup') && (
+                                    {(msg.type === 'welcome' || msg.type === 'setup' || msg.type === 'intro') && (
                                         <>
                                             {msg.summaryCard && (
                                                 <div className='resume-summary-card'>
@@ -398,7 +618,7 @@ const MockInterview = () => {
                                     
                                     {msg.type === 'question' && (
                                         <div className='msg-question'>
-                                            <span className={`badge ${msg.badge === 'Technical' ? 'badge--technical' : 'badge--behavioral'}`}>
+                                            <span className={`badge badge--technical`}>
                                                 {msg.badge}
                                             </span>
                                             <p>{msg.text}</p>
@@ -445,22 +665,30 @@ const MockInterview = () => {
                                             </div>
                                             
                                             {msg.evaluation.metrics && (
-                                                <div className='metrics-grid'>
+                                                <div className='metrics-grid' style={{display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem', marginBottom: '1.25rem'}}>
                                                     <div className='metric-item'>
-                                                        <span className='metric-label'><Target size={14}/> Tech</span>
-                                                        <span className='metric-value'>{msg.evaluation.metrics.technicalAccuracy}/10</span>
+                                                        <span className='metric-label' style={{display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-secondary)', fontSize: '0.7rem', fontWeight: '600', textTransform: 'uppercase'}}><Target size={14}/> Tech Accuracy</span>
+                                                        <span className='metric-value' style={{fontSize: '1.1rem', fontWeight: '700', color: 'var(--text-primary)'}}>{msg.evaluation.metrics.technicalAccuracy}/10</span>
                                                     </div>
                                                     <div className='metric-item'>
-                                                        <span className='metric-label'><MessageSquare size={14}/> Comm</span>
-                                                        <span className='metric-value'>{msg.evaluation.metrics.communication}/10</span>
+                                                        <span className='metric-label' style={{display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-secondary)', fontSize: '0.7rem', fontWeight: '600', textTransform: 'uppercase'}}><Brain size={14}/> Concept Clarity</span>
+                                                        <span className='metric-value' style={{fontSize: '1.1rem', fontWeight: '700', color: 'var(--text-primary)'}}>{msg.evaluation.metrics.conceptClarity}/10</span>
                                                     </div>
                                                     <div className='metric-item'>
-                                                        <span className='metric-label'><Award size={14}/> Conf</span>
-                                                        <span className='metric-value'>{msg.evaluation.metrics.confidence}/10</span>
+                                                        <span className='metric-label' style={{display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-secondary)', fontSize: '0.7rem', fontWeight: '600', textTransform: 'uppercase'}}><Star size={14}/> Prob Solving</span>
+                                                        <span className='metric-value' style={{fontSize: '1.1rem', fontWeight: '700', color: 'var(--text-primary)'}}>{msg.evaluation.metrics.problemSolving}/10</span>
                                                     </div>
                                                     <div className='metric-item'>
-                                                        <span className='metric-label'><Brain size={14}/> Logic</span>
-                                                        <span className='metric-value'>{msg.evaluation.metrics.problemSolving}/10</span>
+                                                        <span className='metric-label' style={{display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-secondary)', fontSize: '0.7rem', fontWeight: '600', textTransform: 'uppercase'}}><Award size={14}/> Proj Knowledge</span>
+                                                        <span className='metric-value' style={{fontSize: '1.1rem', fontWeight: '700', color: 'var(--text-primary)'}}>{msg.evaluation.metrics.projectKnowledge}/10</span>
+                                                    </div>
+                                                    <div className='metric-item'>
+                                                        <span className='metric-label' style={{display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-secondary)', fontSize: '0.7rem', fontWeight: '600', textTransform: 'uppercase'}}><User size={14}/> Confidence</span>
+                                                        <span className='metric-value' style={{fontSize: '1.1rem', fontWeight: '700', color: 'var(--text-primary)'}}>{msg.evaluation.metrics.confidence}/10</span>
+                                                    </div>
+                                                    <div className='metric-item'>
+                                                        <span className='metric-label' style={{display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--text-secondary)', fontSize: '0.7rem', fontWeight: '600', textTransform: 'uppercase'}}><MessageSquare size={14}/> Comm Score</span>
+                                                        <span className='metric-value' style={{fontSize: '1.1rem', fontWeight: '700', color: 'var(--text-primary)'}}>{msg.evaluation.metrics.communication}/10</span>
                                                     </div>
                                                 </div>
                                             )}
@@ -479,6 +707,43 @@ const MockInterview = () => {
                                                     </ul>
                                                 </div>
                                             </div>
+
+                                            {msg.evaluation.communicationAnalysis && (
+                                                <div className='suggestions-box' style={{background: 'rgba(168, 85, 247, 0.05)', borderLeft: '3px solid #a855f7', padding: '1rem', borderRadius: '0 0.5rem 0.5rem 0', marginBottom: '1.25rem'}}>
+                                                    <h5 style={{color: '#c084fc', margin: '0 0 0.75rem 0', display: 'flex', alignItems: 'center', gap: '0.4rem'}}><Mic size={16}/> Communication Analysis</h5>
+                                                    <div style={{display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem', marginBottom: '0.75rem'}}>
+                                                        <div style={{background: 'rgba(255,255,255,0.02)', padding: '0.5rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.05)', textAlign: 'center'}}>
+                                                            <span style={{display: 'block', fontSize: '0.75rem', color: 'var(--text-secondary)'}}>Confidence</span>
+                                                            <span style={{fontSize: '1rem', fontWeight: '700', color: '#fff'}}>{msg.evaluation.communicationAnalysis.speakingConfidence}%</span>
+                                                        </div>
+                                                        <div style={{background: 'rgba(255,255,255,0.02)', padding: '0.5rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.05)', textAlign: 'center'}}>
+                                                            <span style={{display: 'block', fontSize: '0.75rem', color: 'var(--text-secondary)'}}>Fluency</span>
+                                                            <span style={{fontSize: '1rem', fontWeight: '700', color: '#fff'}}>{msg.evaluation.communicationAnalysis.fluency}%</span>
+                                                        </div>
+                                                        <div style={{background: 'rgba(255,255,255,0.02)', padding: '0.5rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.05)', textAlign: 'center'}}>
+                                                            <span style={{display: 'block', fontSize: '0.75rem', color: 'var(--text-secondary)'}}>Grammar</span>
+                                                            <span style={{fontSize: '1rem', fontWeight: '700', color: '#fff'}}>{msg.evaluation.communicationAnalysis.grammar}%</span>
+                                                        </div>
+                                                        <div style={{background: 'rgba(255,255,255,0.02)', padding: '0.5rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.05)', textAlign: 'center'}}>
+                                                            <span style={{display: 'block', fontSize: '0.75rem', color: 'var(--text-secondary)'}}>Clarity</span>
+                                                            <span style={{fontSize: '1rem', fontWeight: '700', color: '#fff'}}>{msg.evaluation.communicationAnalysis.clarity}%</span>
+                                                        </div>
+                                                        <div style={{background: 'rgba(255,255,255,0.02)', padding: '0.5rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.05)', textAlign: 'center'}}>
+                                                            <span style={{display: 'block', fontSize: '0.75rem', color: 'var(--text-secondary)'}}>Speed</span>
+                                                            <span style={{fontSize: '1rem', fontWeight: '700', color: '#fff'}}>{msg.evaluation.communicationAnalysis.speakingSpeed || 0} WPM</span>
+                                                        </div>
+                                                        <div style={{background: 'rgba(255,255,255,0.02)', padding: '0.5rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.05)', textAlign: 'center'}}>
+                                                            <span style={{display: 'block', fontSize: '0.75rem', color: 'var(--text-secondary)'}}>Filler Words</span>
+                                                            <span style={{fontSize: '1rem', fontWeight: '700', color: '#fff'}}>{msg.evaluation.communicationAnalysis.fillerWordsCount || 0}</span>
+                                                        </div>
+                                                    </div>
+                                                    {msg.evaluation.communicationAnalysis.fillerWordsFound?.length > 0 && (
+                                                        <div style={{fontSize: '0.8rem', color: 'var(--text-secondary)'}}>
+                                                            Filler Words Detected: <span style={{color: '#f87171'}}>{msg.evaluation.communicationAnalysis.fillerWordsFound.join(', ')}</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
 
                                             <div className='improved-box'>
                                                 <h5><Star size={16}/> Ideal Answer</h5>
@@ -554,41 +819,75 @@ const MockInterview = () => {
 
             {/* Sticky Input Area */}
             <footer className='chat-footer'>
-                <form className='chat-input-wrapper' onSubmit={handleSendMessage}>
-                    <textarea
-                        value={inputText}
-                        onChange={(e) => setInputText(e.target.value)}
-                        placeholder={
-                            interviewStep === 'finished' ? "Interview complete." : 
-                            interviewStep !== 'interviewing' ? "Please select an option above..." :
-                            "Type your answer here..."
-                        }
-                        disabled={isTyping || evalStatus || interviewStep !== 'interviewing'}
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter' && !e.shiftKey) {
-                                e.preventDefault();
-                                handleSendMessage();
-                            }
-                        }}
-                        rows={1}
-                        // Auto-grow height based on scrollHeight, max 150px
-                        ref={(el) => {
-                            if(el) {
-                                el.style.height = 'auto';
-                                el.style.height = (el.scrollHeight > 150 ? 150 : el.scrollHeight) + 'px';
-                            }
-                        }}
-                    />
-                    <button 
-                        type="submit"
-                        className='send-btn'
-                        disabled={isTyping || evalStatus || !inputText.trim() || interviewStep !== 'interviewing'}
-                    >
-                        <Send size={18} />
-                    </button>
+                {audioUrl && (
+                    <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%', maxWidth: '800px', background: 'rgba(59, 130, 246, 0.05)', padding: '0.5rem 1rem', borderRadius: '0.75rem', border: '1px solid rgba(59, 130, 246, 0.2)', marginBottom: '0.75rem', boxSizing: 'border-box'}}>
+                        <span style={{fontSize: '0.85rem', color: 'var(--text-secondary)'}}>Voice Answer recorded:</span>
+                        <button type="button" onClick={playRecording} style={{background: 'rgba(59, 130, 246, 0.15)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.3)', borderRadius: '6px', padding: '0.35rem 0.75rem', fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem'}}>
+                            <Volume2 size={14}/> Replay
+                        </button>
+                        <button type="button" onClick={reRecord} style={{background: 'rgba(248, 113, 113, 0.15)', color: '#f87171', border: '1px solid rgba(248, 113, 113, 0.3)', borderRadius: '6px', padding: '0.35rem 0.75rem', fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem'}}>
+                            <RotateCcw size={14}/> Re-record
+                        </button>
+                    </div>
+                )}
+                
+                <form className='chat-input-wrapper' onSubmit={handleSendMessage} style={{maxWidth: '800px', width: '100%', display: 'flex', alignItems: 'center'}}>
+                    {isRecording ? (
+                        <div style={{display: 'flex', alignItems: 'center', gap: '1rem', background: '#221528', padding: '0.5rem 0.75rem', borderRadius: '0.75rem', width: '100%', border: '1px solid #a855f7'}}>
+                            <div style={{width: '10px', height: '10px', borderRadius: '50%', background: '#ef4444', animation: 'pulse 1s infinite'}} />
+                            <span style={{fontSize: '0.9rem', color: '#e9d5ff', fontWeight: '500'}}>Recording Answer... ({recordingDuration}s)</span>
+                            <button type="button" onClick={stopRecording} style={{marginLeft: 'auto', background: 'rgba(239, 68, 68, 0.2)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.4)', borderRadius: '6px', padding: '0.35rem 0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.85rem'}}>
+                                <Square size={12} fill="#ef4444"/> Stop Recording
+                            </button>
+                        </div>
+                    ) : (
+                        <>
+                            {interviewStep === 'interviewing' && !audioUrl && (
+                                <button 
+                                    type="button" 
+                                    onClick={startRecording}
+                                    style={{background: 'rgba(255, 255, 255, 0.05)', color: 'var(--text-secondary)', border: 'none', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer', transition: 'all 0.2s', marginRight: '0.75rem', flexShrink: 0}}
+                                    disabled={isTyping || evalStatus}
+                                    title="Answer by speaking"
+                                >
+                                    <Mic size={18} />
+                                </button>
+                            )}
+                            <textarea
+                                value={inputText}
+                                onChange={(e) => setInputText(e.target.value)}
+                                placeholder={
+                                    interviewStep === 'finished' ? "Interview complete." : 
+                                    interviewStep !== 'interviewing' ? "Please select an option above..." :
+                                    "Type or speak your answer here..."
+                                }
+                                disabled={isTyping || evalStatus || interviewStep !== 'interviewing'}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                        e.preventDefault();
+                                        handleSendMessage();
+                                    }
+                                }}
+                                rows={1}
+                                ref={(el) => {
+                                    if(el) {
+                                        el.style.height = 'auto';
+                                        el.style.height = (el.scrollHeight > 150 ? 150 : el.scrollHeight) + 'px';
+                                    }
+                                }}
+                            />
+                            <button 
+                                type="submit"
+                                className='send-btn'
+                                disabled={isTyping || evalStatus || !inputText.trim() || interviewStep !== 'interviewing'}
+                            >
+                                <Send size={18} />
+                            </button>
+                        </>
+                    )}
                 </form>
                 <div className='chat-footer-hint'>
-                    {interviewStep === 'interviewing' ? "Press Enter to send, Shift + Enter for new line." : "Use the buttons above to proceed."}
+                    {interviewStep === 'interviewing' ? (isVoiceUsed ? "Click send to submit your voice answer or Re-record to try again." : "Press Enter to send, or click the mic button to speak.") : "Use the buttons above to proceed."}
                 </div>
             </footer>
         </div>

@@ -7,7 +7,7 @@ const FloatingBackButton = () => {
     const navigate = useNavigate()
     const location = useLocation()
 
-    // Don't show the back button on the Home page (root)
+    
     if (location.pathname === '/') {
         return null
     }
