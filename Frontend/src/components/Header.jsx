@@ -1,14 +1,58 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router'
 import { useAuth } from '../features/auth/hooks/useAuth'
-import { User, FileText, History, BarChart2, Settings, HelpCircle, LogOut, Menu, Search, Moon, Bell } from 'lucide-react'
+import { User, FileText, History, BarChart2, Settings, HelpCircle, LogOut, Menu, Search, Moon, Sun, Bell } from 'lucide-react'
+import toast from 'react-hot-toast'
 import './Header.scss'
 
 const Header = ({ openAuthModal, setIsSidebarOpen }) => {
     const { user, handleLogout } = useAuth()
     const navigate = useNavigate()
     const [ isDropdownOpen, setIsDropdownOpen ] = useState(false)
+    const [ theme, setTheme ] = useState('dark') // Default seems to be dark based on body
     const dropdownRef = useRef(null)
+    const searchInputRef = useRef(null)
+
+    useEffect(() => {
+        // Initialize theme based on document attribute or localStorage
+        const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+        setTheme(currentTheme);
+        document.documentElement.setAttribute('data-theme', currentTheme);
+    }, [])
+
+    const toggleTheme = () => {
+        const newTheme = theme === 'dark' ? 'light' : 'dark';
+        setTheme(newTheme);
+        document.documentElement.setAttribute('data-theme', newTheme);
+        localStorage.setItem('theme', newTheme);
+    }
+
+    const handleNotificationClick = () => {
+        toast("No new notifications.", { icon: '🔔' });
+    }
+
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            // Check for Cmd+K (Mac) or Ctrl+K (Windows/Linux)
+            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+                e.preventDefault();
+                if (searchInputRef.current) {
+                    searchInputRef.current.focus();
+                }
+            }
+        };
+
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, []);
+
+    const onSearchSubmit = (e) => {
+        if (e.key === 'Enter') {
+            toast.success(`Searching for: ${e.target.value}`);
+            e.target.value = '';
+            e.target.blur();
+        }
+    }
 
     const onLogout = async () => {
         if (window.confirm("Are you sure you want to logout?")) {
@@ -65,15 +109,24 @@ const Header = ({ openAuthModal, setIsSidebarOpen }) => {
             
             <div className="header-search">
                 <Search size={16} className="search-icon" />
-                <input type="text" placeholder="Search..." />
+                <input 
+                    type="text" 
+                    placeholder="Search..." 
+                    ref={searchInputRef}
+                    onKeyDown={onSearchSubmit}
+                />
                 <span className="search-shortcut">⌘K</span>
             </div>
 
             <div className='nav-spacer' />
             
             <div className="header-actions">
-                <button className="icon-btn" title="Toggle Theme"><Moon size={18}/></button>
-                <button className="icon-btn" title="Notifications"><Bell size={18}/></button>
+                <button className="icon-btn" title="Toggle Theme" onClick={toggleTheme}>
+                    {theme === 'dark' ? <Sun size={18}/> : <Moon size={18}/>}
+                </button>
+                <button className="icon-btn" title="Notifications" onClick={handleNotificationClick}>
+                    <Bell size={18}/>
+                </button>
             </div>
             
             {!user ? (
