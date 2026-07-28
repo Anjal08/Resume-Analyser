@@ -218,6 +218,150 @@
     }
 }
 
+/* Custom Dropdowns */
+.search-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    left: 0;
+    width: 100%;
+    background: var(--bg-dropdown);
+    backdrop-filter: blur(16px);
+    border: 1px solid var(--border-color);
+    border-radius: 0.75rem;
+    padding: 0.5rem;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    z-index: 50;
+    animation: dropdownFadeIn 0.2s ease-out;
+
+    .dropdown-header {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+        padding: 0.25rem 0.5rem 0.5rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .dropdown-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.65rem 1rem;
+        color: var(--text-primary);
+        border-radius: 0.5rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-size: 0.85rem;
+        font-weight: 500;
+
+        &:hover {
+            background-color: var(--bg-hover);
+        }
+    }
+}
+
+.notification-container {
+    position: relative;
+
+    .notification-badge {
+        position: absolute;
+        top: 2px;
+        right: 4px;
+        width: 8px;
+        height: 8px;
+        background-color: var(--danger);
+        border-radius: 50%;
+        border: 2px solid var(--bg-nav);
+    }
+}
+
+.notification-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    right: 0;
+    width: 320px;
+    background: var(--bg-dropdown);
+    backdrop-filter: blur(16px);
+    border: 1px solid var(--border-color);
+    border-radius: 0.75rem;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    display: flex;
+    flex-direction: column;
+    z-index: 50;
+    animation: dropdownFadeIn 0.2s ease-out;
+
+    .dropdown-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem;
+        border-bottom: 1px solid var(--border-color);
+        font-weight: 600;
+        color: var(--text-primary);
+
+        .mark-read-btn {
+            background: none;
+            border: none;
+            color: var(--accent-blue);
+            font-size: 0.8rem;
+            cursor: pointer;
+            
+            &:hover {
+                text-decoration: underline;
+            }
+        }
+    }
+
+    .notification-list {
+        max-height: 350px;
+        overflow-y: auto;
+        
+        .notification-item {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: background-color 0.2s;
+
+            &:last-child {
+                border-bottom: none;
+            }
+
+            &:hover {
+                background-color: var(--bg-hover);
+            }
+
+            &.unread {
+                background-color: rgba(9, 105, 218, 0.05); /* very light blue */
+                
+                [data-theme="dark"] & {
+                    background-color: rgba(139, 92, 246, 0.1); /* light violet */
+                }
+            }
+
+            .notification-content {
+                font-size: 0.9rem;
+                color: var(--text-primary);
+                margin-bottom: 0.25rem;
+            }
+
+            .notification-time {
+                font-size: 0.75rem;
+                color: var(--text-secondary);
+            }
+        }
+
+        .notification-empty {
+            padding: 2rem;
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+    }
+}
+
 @keyframes dropdownFadeIn {
     from { opacity: 0; transform: translateY(-10px) scale(0.95); }
     to { opacity: 1; transform: translateY(0) scale(1); }

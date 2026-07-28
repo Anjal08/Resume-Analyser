@@ -10,14 +10,35 @@ const Header = ({ openAuthModal, setIsSidebarOpen }) => {
     const navigate = useNavigate()
     const [ isDropdownOpen, setIsDropdownOpen ] = useState(false)
     const [ theme, setTheme ] = useState('dark') // Default seems to be dark based on body
+    
+    // Search states
+    const [searchQuery, setSearchQuery] = useState('')
+    const [searchHistory, setSearchHistory] = useState([])
+    const [isSearchHistoryOpen, setIsSearchHistoryOpen] = useState(false)
+    
+    // Notification states
+    const [notifications, setNotifications] = useState([
+        { id: 1, text: 'Your ATS Resume Analysis is ready!', time: '2 mins ago', read: false },
+        { id: 2, text: 'You have a mock interview scheduled for tomorrow.', time: '1 hour ago', read: false }
+    ])
+    const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
+
     const dropdownRef = useRef(null)
     const searchInputRef = useRef(null)
+    const searchContainerRef = useRef(null)
+    const notificationsRef = useRef(null)
 
     useEffect(() => {
         // Initialize theme based on document attribute or localStorage
         const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
         setTheme(currentTheme);
         document.documentElement.setAttribute('data-theme', currentTheme);
+
+        // Load search history from local storage
+        const savedHistory = localStorage.getItem('searchHistory');
+        if (savedHistory) {
+            setSearchHistory(JSON.parse(savedHistory));
+        }
     }, [])
 
     const toggleTheme = () => {
@@ -28,7 +49,11 @@ const Header = ({ openAuthModal, setIsSidebarOpen }) => {
     }
 
     const handleNotificationClick = () => {
-        toast("No new notifications.", { icon: '🔔' });
+        setIsNotificationsOpen(!isNotificationsOpen);
+    }
+
+    const markNotificationsAsRead = () => {
+        setNotifications(notifications.map(n => ({ ...n, read: true })));
     }
 
     useEffect(() => {
@@ -47,11 +72,25 @@ const Header = ({ openAuthModal, setIsSidebarOpen }) => {
     }, []);
 
     const onSearchSubmit = (e) => {
-        if (e.key === 'Enter') {
-            toast.success(`Searching for: ${e.target.value}`);
-            e.target.value = '';
+        if (e.key === 'Enter' && searchQuery.trim() !== '') {
+            toast.success(`Searching for: ${searchQuery}`);
+            
+            // Add to history
+            const newHistory = [searchQuery, ...searchHistory.filter(item => item !== searchQuery)].slice(0, 5);
+            setSearchHistory(newHistory);
+            localStorage.setItem('searchHistory', JSON.stringify(newHistory));
+            
+            setSearchQuery('');
+            setIsSearchHistoryOpen(false);
             e.target.blur();
         }
+    }
+
+    const onHistoryItemClick = (item) => {
+        toast.success(`Searching for: ${item}`);
+        setSearchQuery('');
+        setIsSearchHistoryOpen(false);
+        if (searchInputRef.current) searchInputRef.current.blur();
     }
 
     const onLogout = async () => {
@@ -67,11 +106,17 @@ const Header = ({ openAuthModal, setIsSidebarOpen }) => {
         navigate(path)
     }
 
-    // Close dropdown on outside click
+    // Close dropdowns on outside click
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
                 setIsDropdownOpen(false)
+            }
+            if (searchContainerRef.current && !searchContainerRef.current.contains(event.target)) {
+                setIsSearchHistoryOpen(false)
+            }
+            if (notificationsRef.current && !notificationsRef.current.contains(event.target)) {
+                setIsNotificationsOpen(false)
             }
         }
         document.addEventListener("mousedown", handleClickOutside)
@@ -107,15 +152,30 @@ const Header = ({ openAuthModal, setIsSidebarOpen }) => {
                 <Menu size={24} />
             </button>
             
-            <div className="header-search">
+            <div className="header-search" ref={searchContainerRef}>
                 <Search size={16} className="search-icon" />
                 <input 
                     type="text" 
                     placeholder="Search..." 
                     ref={searchInputRef}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
                     onKeyDown={onSearchSubmit}
+                    onFocus={() => setIsSearchHistoryOpen(true)}
                 />
                 <span className="search-shortcut">⌘K</span>
+
+                {isSearchHistoryOpen && searchHistory.length > 0 && (
+                    <div className="search-dropdown-menu">
+                        <div className="dropdown-header">Recent Searches</div>
+                        {searchHistory.map((item, idx) => (
+                            <div key={idx} className="dropdown-item" onClick={() => onHistoryItemClick(item)}>
+                                <History size={14} />
+                                <span>{item}</span>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
 
             <div className='nav-spacer' />
@@ -124,9 +184,31 @@ const Header = ({ openAuthModal, setIsSidebarOpen }) => {
                 <button className="icon-btn" title="Toggle Theme" onClick={toggleTheme}>
                     {theme === 'dark' ? <Sun size={18}/> : <Moon size={18}/>}
                 </button>
-                <button className="icon-btn" title="Notifications" onClick={handleNotificationClick}>
-                    <Bell size={18}/>
-                </button>
+                <div className="notification-container" ref={notificationsRef}>
+                    <button className="icon-btn" title="Notifications" onClick={handleNotificationClick}>
+                        <Bell size={18}/>
+                        {notifications.some(n => !n.read) && <span className="notification-badge"></span>}
+                    </button>
+                    {isNotificationsOpen && (
+                        <div className="notification-dropdown-menu">
+                            <div className="dropdown-header">
+                                <span>Notifications</span>
+                                <button onClick={markNotificationsAsRead} className="mark-read-btn">Mark all as read</button>
+                            </div>
+                            <div className="notification-list">
+                                {notifications.map(notification => (
+                                    <div key={notification.id} className={`notification-item ${notification.read ? 'read' : 'unread'}`}>
+                                        <div className="notification-content">{notification.text}</div>
+                                        <div className="notification-time">{notification.time}</div>
+                                    </div>
+                                ))}
+                                {notifications.length === 0 && (
+                                    <div className="notification-empty">No notifications</div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
             </div>
             
             {!user ? (
