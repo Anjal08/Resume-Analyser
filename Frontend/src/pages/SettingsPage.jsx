@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router'
-import { Settings, Shield, Bell, Moon, LogOut, Lock, CheckCircle, AlertCircle, X, Trash2 } from 'lucide-react'
+import { Settings, Shield, Bell, Moon, LogOut, Lock, CheckCircle, AlertCircle, X, Trash2, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../features/auth/hooks/useAuth'
 import { useTheme } from '../context/ThemeContext'
 import { changePassword } from '../features/auth/services/auth.api'
@@ -23,6 +23,7 @@ const SettingsPage = () => {
     const [confirmPassword, setConfirmPassword] = useState("")
     const [passLoading, setPassLoading] = useState(false)
     const [passStatus, setPassStatus] = useState(null) // { type: 'success'|'error', msg: '' }
+    const [showPasswords, setShowPasswords] = useState(false)
 
     const handleSignOut = async () => {
         const success = await handleLogout()
@@ -245,33 +246,60 @@ const SettingsPage = () => {
                         <form onSubmit={handlePasswordChange} style={{display: 'flex', flexDirection: 'column', gap: '1rem'}}>
                             <div style={{display: 'flex', flexDirection: 'column', gap: '0.5rem'}}>
                                 <label style={{fontSize: '0.85rem', color: 'var(--text-secondary)'}}>Current Password</label>
-                                <input 
-                                    type="password" 
-                                    className="panel__textarea" 
-                                    style={{minHeight: '40px', padding: '0.5rem 1rem'}}
-                                    value={currentPassword} 
-                                    onChange={e => setCurrentPassword(e.target.value)} 
-                                />
+                                <div style={{position: 'relative', display: 'flex', alignItems: 'center'}}>
+                                    <input 
+                                        type={showPasswords ? "text" : "password"} 
+                                        className="panel__textarea" 
+                                        style={{minHeight: '40px', padding: '0.5rem 2.5rem 0.5rem 1rem', width: '100%'}}
+                                        value={currentPassword} 
+                                        onChange={e => setCurrentPassword(e.target.value)} 
+                                    />
+                                    <button 
+                                        type="button"
+                                        onClick={() => setShowPasswords(!showPasswords)}
+                                        style={{position: 'absolute', right: '0.75rem', background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex'}}
+                                    >
+                                        {showPasswords ? <EyeOff size={18} /> : <Eye size={18} />}
+                                    </button>
+                                </div>
                             </div>
                             <div style={{display: 'flex', flexDirection: 'column', gap: '0.5rem'}}>
                                 <label style={{fontSize: '0.85rem', color: 'var(--text-secondary)'}}>New Password</label>
-                                <input 
-                                    type="password" 
-                                    className="panel__textarea" 
-                                    style={{minHeight: '40px', padding: '0.5rem 1rem'}}
-                                    value={newPassword} 
-                                    onChange={e => setNewPassword(e.target.value)} 
-                                />
+                                <div style={{position: 'relative', display: 'flex', alignItems: 'center'}}>
+                                    <input 
+                                        type={showPasswords ? "text" : "password"} 
+                                        className="panel__textarea" 
+                                        style={{minHeight: '40px', padding: '0.5rem 2.5rem 0.5rem 1rem', width: '100%'}}
+                                        value={newPassword} 
+                                        onChange={e => setNewPassword(e.target.value)} 
+                                    />
+                                    <button 
+                                        type="button"
+                                        onClick={() => setShowPasswords(!showPasswords)}
+                                        style={{position: 'absolute', right: '0.75rem', background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex'}}
+                                    >
+                                        {showPasswords ? <EyeOff size={18} /> : <Eye size={18} />}
+                                    </button>
+                                </div>
                             </div>
                             <div style={{display: 'flex', flexDirection: 'column', gap: '0.5rem'}}>
                                 <label style={{fontSize: '0.85rem', color: 'var(--text-secondary)'}}>Confirm New Password</label>
-                                <input 
-                                    type="password" 
-                                    className="panel__textarea" 
-                                    style={{minHeight: '40px', padding: '0.5rem 1rem'}}
-                                    value={confirmPassword} 
-                                    onChange={e => setConfirmPassword(e.target.value)} 
-                                />
+                                <div style={{position: 'relative', display: 'flex', alignItems: 'center'}}>
+                                    <input 
+                                        type={showPasswords ? "text" : "password"} 
+                                        className="panel__textarea" 
+                                        style={{minHeight: '40px', padding: '0.5rem 2.5rem 0.5rem 1rem', width: '100%'}}
+                                        value={confirmPassword} 
+                                        onChange={e => setConfirmPassword(e.target.value)} 
+                                    />
+                                    <button 
+                                        type="button"
+                                        onClick={() => setShowPasswords(!showPasswords)}
+                                        style={{position: 'absolute', right: '0.75rem', background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex'}}
+                                    >
+                                        {showPasswords ? <EyeOff size={18} /> : <Eye size={18} />}
+                                    </button>
+                                </div>
                             </div>
 
                             {passStatus && (
