@@ -21,6 +21,10 @@ async function generateInterViewReportController(req, res) {
         }
     }
 
+    if (!resumeText || resumeText.trim().length === 0) {
+        return res.status(400).json({ message: "Parsed resume is empty. Please upload a valid text-based PDF resume to proceed." });
+    }
+
     const { selfDescription, jobDescription } = req.body
 
     if (!jobDescription) {
@@ -276,7 +280,7 @@ async function deleteMockInterviewController(req, res) {
  * @description Controller to generate next interview question.
  */
 async function generateNextQuestionController(req, res) {
-    const { resume, jobDescription, role, difficulty, qnaHistory, currentRound } = req.body;
+    const { resumeProfile, jobDescription, role, difficulty, qnaHistory, currentRound, currentRoundPlan, coveredTopics, interviewId } = req.body;
 
     if (currentRound === undefined) {
         return res.status(400).json({ message: "currentRound is required." });
@@ -284,12 +288,15 @@ async function generateNextQuestionController(req, res) {
 
     try {
         const nextQuestionData = await generateNextQuestion({
-            resume,
+            resumeProfile,
             jobDescription,
             role,
             difficulty,
             qnaHistory,
-            currentRound
+            currentRound,
+            currentRoundPlan,
+            coveredTopics,
+            interviewId
         });
 
         res.status(200).json({

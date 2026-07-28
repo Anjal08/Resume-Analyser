@@ -36,6 +36,7 @@ const MockInterview = () => {
     const [ inputText, setInputText ] = useState("")
     const [ isTyping, setIsTyping ] = useState(false)
     const [ evalStatus, setEvalStatus ] = useState(null) // null | 'evaluating' | 'generating_final' 
+    const [ coveredTopics, setCoveredTopics ] = useState([])
     
     const messagesEndRef = useRef(null)
     const chatContainerRef = useRef(null)
@@ -204,11 +205,13 @@ const MockInterview = () => {
         setIsTyping(false);
         setEvalStatus(null);
         setInputText("");
+        setCoveredTopics([]);
         
         return () => {
             setMessages([]);
             setInterviewStep('initialLoading');
             setActiveQuestions([]);
+            setCoveredTopics([]);
         };
     }, [interviewId]);
 
@@ -334,16 +337,23 @@ const MockInterview = () => {
         }])
 
         try {
+            const currentRoundPlan = report.roadmap?.[0] || null;
             const firstQuestionData = await getNextQuestion({
-                resume: report.resume,
+                interviewId: report._id,
+                resumeProfile: report.resumeProfile,
                 jobDescription: report.jobDescription,
                 role,
                 difficulty,
                 qnaHistory: [],
-                currentRound: 1
+                currentRound: 1,
+                currentRoundPlan,
+                coveredTopics: []
             });
 
             if (firstQuestionData) {
+                if (currentRoundPlan && currentRoundPlan.assignedTopic) {
+                    setCoveredTopics([currentRoundPlan.assignedTopic]);
+                }
                 setActiveQuestions([firstQuestionData]);
                 setMessages(prev => [...prev, {
                     id: Date.now() + 1,
@@ -387,73 +397,91 @@ const MockInterview = () => {
         
         setEvalStatus('evaluating');
 
-        // Calculate WPM if voice was used
-        let speakingSpeed = 0;
-        if (isVoiceUsed && recordingDuration > 0) {
-            const wordCount = userMessage.split(/\s+/).filter(Boolean).length;
-            speakingSpeed = Math.round((wordCount / recordingDuration) * 60);
-        }
+        try {
+            // Calculate WPM if voice was used
+            let speakingSpeed = 0;
+            if (isVoiceUsed && recordingDuration > 0) {
+                const wordCount = userMessage.split(/\s+/).filter(Boolean).length;
+                speakingSpeed = Math.round((wordCount / recordingDuration) * 60);
+            }
 
-        // Evaluate Answer
-        const evaluation = await evaluateMockAnswer({
-            question: currentQ.question,
-            userAnswer: userMessage,
-            intention: currentQ.intention,
-            expectedAnswer: currentQ.expectedAnswer,
-            role,
-            difficulty,
-            speakingSpeed,
-            isVoice: isVoiceUsed
-        });
+            // Evaluate Answer
+            const evaluation = await evaluateMockAnswer({
+                question: currentQ.question,
+                userAnswer: userMessage,
+                intention: currentQ.intention,
+                expectedAnswer: currentQ.expectedAnswer,
+                role,
+                difficulty,
+                speakingSpeed,
+                isVoice: isVoiceUsed
+            });
 
-        // Update QnA History
-        const newQna = {
-            question: currentQ.question,
-            userAnswer: userMessage,
-            aiScore: evaluation?.finalScore || 0,
-            aiFeedback: evaluation?.suggestions?.join(" ") || "No feedback provided.",
-            intention: currentQ.intention,
-            isVoice: isVoiceUsed,
-            voiceMetrics: evaluation?.communicationAnalysis ? {
-                ...evaluation.communicationAnalysis,
-                speakingSpeed
-            } : null
-        };
+            // Safely parse suggestions
+            let feedbackText = "No feedback provided.";
+            if (evaluation?.suggestions) {
+                if (Array.isArray(evaluation.suggestions)) {
+                    feedbackText = evaluation.suggestions.join(" ");
+                } else if (typeof evaluation.suggestions === 'string') {
+                    feedbackText = evaluation.suggestions;
+                }
+            }
 
-        // Reset voice state for next question
-        setAudioUrl(null);
-        setRecordingDuration(0);
-        setIsVoiceUsed(false);
+            // Update QnA History
+            const newQna = {
+                question: currentQ.question,
+                userAnswer: userMessage,
+                aiScore: evaluation?.finalScore || 0,
+                aiFeedback: feedbackText,
+                intention: currentQ.intention,
+                isVoice: isVoiceUsed,
+                voiceMetrics: evaluation?.communicationAnalysis ? {
+                    ...evaluation.communicationAnalysis,
+                    speakingSpeed
+                } : null
+            };
 
-        const updatedHistory = [...qnaHistory, newQna];
-        setQnaHistory(updatedHistory);
-        setEvalStatus(null);
+            // Reset voice state for next question
+            setAudioUrl(null);
+            setRecordingDuration(0);
+            setIsVoiceUsed(false);
 
-        // Add Feedback Message
-        setMessages(msgPrev => [...msgPrev, {
-            id: Date.now(),
-            sender: 'ai',
-            type: 'feedback',
-            evaluation: evaluation || { finalScore: 0, feedback: "Evaluation failed.", improvedAnswer: "" }
-        }]);
+            const updatedHistory = [...qnaHistory, newQna];
+            setQnaHistory(updatedHistory);
+            setEvalStatus(null);
 
-        // Proceed to next question or finish
+            // Add Feedback Message
+            setMessages(msgPrev => [...msgPrev, {
+                id: Date.now(),
+                sender: 'ai',
+                type: 'feedback',
+                evaluation: evaluation || { finalScore: 0, feedback: "Evaluation failed.", improvedAnswer: "" }
+            }]);
+
+            // Proceed to next question or finish
         const nextRound = updatedHistory.length + 1;
         const maxRounds = 5;
 
         if (nextRound <= maxRounds) {
             setIsTyping(true);
             try {
+                const currentRoundPlan = report.roadmap?.[nextRound - 1] || null;
                 const nextQuestionData = await getNextQuestion({
-                    resume: report.resume,
+                    interviewId: report._id,
+                    resumeProfile: report.resumeProfile,
                     jobDescription: report.jobDescription,
                     role,
                     difficulty,
                     qnaHistory: updatedHistory,
-                    currentRound: nextRound
+                    currentRound: nextRound,
+                    currentRoundPlan,
+                    coveredTopics
                 });
 
                 if (nextQuestionData) {
+                    if (currentRoundPlan && currentRoundPlan.assignedTopic) {
+                        setCoveredTopics(prev => [...prev, currentRoundPlan.assignedTopic]);
+                    }
                     setActiveQuestions(prev => [...prev, nextQuestionData]);
                     setCurrentIndex(nextRound - 1);
                     
@@ -476,19 +504,26 @@ const MockInterview = () => {
                     throw new Error("Failed to generate next question");
                 }
             } catch (error) {
-                console.error(error);
-                setMessages(msgPrev => [...msgPrev, {
-                    id: Date.now(),
-                    sender: 'ai',
-                    type: 'error',
-                    text: "Sorry, I encountered an error generating the next question. Let's finish the interview here."
-                }]);
+                    // Automatically move to final step if question generation fails
+                    setInterviewStep('completed');
+                    finishInterview(updatedHistory);
+                } finally {
+                    setIsTyping(false);
+                }
+            } else {
+                setInterviewStep('completed');
                 finishInterview(updatedHistory);
-            } finally {
-                setIsTyping(false);
             }
-        } else {
-            finishInterview(updatedHistory);
+        } catch (criticalError) {
+            console.error("Critical error in handleSendMessage:", criticalError);
+            setEvalStatus(null);
+            setIsTyping(false);
+            setMessages(prev => [...prev, {
+                id: Date.now(),
+                sender: 'ai',
+                type: 'error',
+                text: "A critical error occurred while processing your answer. Please try again or refresh the page."
+            }]);
         }
     }
 
@@ -650,6 +685,12 @@ const MockInterview = () => {
                                     
                                     {!msg.type && ( // Regular User Text
                                         <div className='msg-text'>{msg.text}</div>
+                                    )}
+
+                                    {msg.type === 'error' && (
+                                        <div className='msg-error' style={{ color: '#f87171', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <p style={{ margin: 0, fontSize: '0.95rem' }}>{msg.text}</p>
+                                        </div>
                                     )}
                                     
                                     {msg.type === 'feedback' && (

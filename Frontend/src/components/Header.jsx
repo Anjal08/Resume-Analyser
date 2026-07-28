@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router'
 import { useAuth } from '../features/auth/hooks/useAuth'
-import { User, FileText, History, BarChart2, Settings, HelpCircle, LogOut, Menu } from 'lucide-react'
+import { User, FileText, History, BarChart2, Settings, HelpCircle, LogOut, Menu, Search, Moon, Bell } from 'lucide-react'
 import './Header.scss'
 
 const Header = ({ openAuthModal, setIsSidebarOpen }) => {
@@ -62,7 +62,19 @@ const Header = ({ openAuthModal, setIsSidebarOpen }) => {
             >
                 <Menu size={24} />
             </button>
+            
+            <div className="header-search">
+                <Search size={16} className="search-icon" />
+                <input type="text" placeholder="Search..." />
+                <span className="search-shortcut">⌘K</span>
+            </div>
+
             <div className='nav-spacer' />
+            
+            <div className="header-actions">
+                <button className="icon-btn" title="Toggle Theme"><Moon size={18}/></button>
+                <button className="icon-btn" title="Notifications"><Bell size={18}/></button>
+            </div>
             
             {!user ? (
                 <div className='auth-buttons' style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>

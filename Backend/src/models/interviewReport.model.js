@@ -64,6 +64,23 @@ const preparationPlanSchema = new mongoose.Schema({
     } ]
 })
 
+const resumeProfileSchema = new mongoose.Schema({
+    skills: [String],
+    projects: [String],
+    experience: [String],
+    education: [String],
+    certifications: [String],
+    technologies: [String],
+    proficiency: { type: String }
+}, { _id: false });
+
+const questionPlanSchema = new mongoose.Schema({
+    roundNumber: { type: Number, required: true },
+    assignedTopic: { type: String, required: true },
+    topicType: { type: String, required: true },
+    difficultyTarget: { type: String, required: true }
+}, { _id: false });
+
 const interviewReportSchema = new mongoose.Schema({
     jobDescription: {
         type: String,
@@ -84,6 +101,8 @@ const interviewReportSchema = new mongoose.Schema({
     behavioralQuestions: [ behavioralQuestionSchema ],
     skillGaps: [ skillGapSchema ],
     preparationPlan: [ preparationPlanSchema ],
+    resumeProfile: resumeProfileSchema,
+    roadmap: [ questionPlanSchema ],
     user: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "users"

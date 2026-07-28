@@ -73,7 +73,7 @@ export const deleteInterviewReport = async (interviewId) => {
  * @description Service to evaluate an answer in a mock interview.
  */
 export const evaluateAnswer = async (evaluationData) => {
-    const response = await api.post('/api/interview/evaluate', evaluationData)
+    const response = await api.post('/api/interview/evaluate', evaluationData, { timeout: 30000 })
     return response.data
 }
 
@@ -121,6 +121,6 @@ export const deleteMockInterview = async (historyId) => {
  * @description Service to generate the next interview question.
  */
 export const getNextQuestion = async (data) => {
-    const response = await api.post('/api/interview/next-question', data)
+    const response = await api.post('/api/interview/next-question', data, { timeout: 30000 })
     return response.data
 }

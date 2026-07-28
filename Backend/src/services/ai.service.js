@@ -30,6 +30,21 @@ const interviewReportSchema = z.object({
         tasks: z.array(z.string()).describe("List of tasks to be done on this day to follow the preparation plan, e.g. read a specific book or article, solve a set of problems, watch a video etc.")
     })).describe("A day-wise preparation plan for the candidate to follow in order to prepare for the interview effectively"),
     title: z.string().describe("The title of the job for which the interview report is generated"),
+    resumeProfile: z.object({
+        skills: z.array(z.string()).describe("List of core skills extracted from the resume"),
+        projects: z.array(z.string()).describe("List of projects extracted from the resume"),
+        experience: z.array(z.string()).describe("List of professional experiences extracted"),
+        education: z.array(z.string()).describe("List of educational qualifications extracted"),
+        certifications: z.array(z.string()).describe("List of certifications extracted"),
+        technologies: z.array(z.string()).describe("List of all specific technologies/tools mentioned"),
+        proficiency: z.string().describe("Estimated overall proficiency level based on resume")
+    }).describe("A normalized and structured profile extracted from the raw resume text"),
+    roadmap: z.array(z.object({
+        roundNumber: z.number().describe("The round number (1 to 5)"),
+        assignedTopic: z.string().describe("The specific resume topic to focus on (e.g., 'Project: E-Commerce Backend' or 'Skill: React')"),
+        topicType: z.enum(['skill', 'project', 'experience', 'education', 'certification', 'technology', 'general']).describe("The type of the topic"),
+        difficultyTarget: z.enum(['Introductory', 'Intermediate', 'Deep-dive', 'Advanced']).describe("The target difficulty for this round")
+    })).describe("A 5-round interview roadmap assigning a specific resume topic and difficulty to each round")
 })
 
 async function generateInterviewReport({ resume, selfDescription, jobDescription }) {
@@ -44,6 +59,9 @@ async function generateInterviewReport({ resume, selfDescription, jobDescription
                         1. Limit the preparationPlan to EXACTLY 5 days to keep the response concise.
                         2. Provide exactly 3 technical questions and 3 behavioral questions.
                         3. Keep all answers and descriptions brief and straight to the point.
+                        4. Extract a highly accurate "resumeProfile" encompassing all skills, projects, and technologies.
+                        5. Generate a 5-round "roadmap" for the upcoming mock interview. Map Round 1 to Introductory, Round 2 to Intermediate (e.g., a specific Project), Round 3 to Deep-dive (e.g., a specific Skill), Round 4 to Deep-dive/Architecture (e.g., Experience), and Round 5 to Advanced.
+                        6. Ensure every roadmap topic explicitly references an item from the "resumeProfile".
 `
 
     console.log("Calling Gemini with prompt length:", prompt.length);
@@ -262,16 +280,43 @@ async function evaluateMockInterviewAnswer({ question, userAnswer, intention, ex
     
     In addition, analyze the candidate's verbal delivery and communication based on the text. Assess their grammar, fluency, clarity, and confidence. Find and count any filler words used in the answer transcript (specifically: "um", "uh", "basically", "actually", "like").`
 
-    const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: prompt,
-        config: {
-            responseMimeType: "application/json",
-            responseSchema: zodToJsonSchema(evaluationSchema),
-        }
-    })
+    try {
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: zodToJsonSchema(evaluationSchema),
+            }
+        })
 
-    return JSON.parse(response.text)
+        return JSON.parse(response.text)
+    } catch (error) {
+        console.error("Gemini Evaluation Error:", error);
+        return {
+            finalScore: 5,
+            metrics: {
+                technicalAccuracy: 5,
+                conceptClarity: 5,
+                problemSolving: 5,
+                projectKnowledge: 5,
+                confidence: 5,
+                communication: 5
+            },
+            strengths: ["Attempted to answer the question"],
+            weaknesses: ["Response could not be fully evaluated due to an AI error"],
+            suggestions: ["Please try answering again or rephrasing your points"],
+            improvedAnswer: "The AI was unable to generate an improved answer at this time.",
+            communicationAnalysis: {
+                speakingConfidence: 50,
+                fluency: 50,
+                grammar: 50,
+                clarity: 50,
+                fillerWordsCount: 0,
+                fillerWordsFound: []
+            }
+        };
+    }
 }
 
 const finalFeedbackSchema = z.object({
@@ -309,32 +354,42 @@ async function generateFinalInterviewFeedback({ role, difficulty, qnaHistory }) 
 const nextQuestionSchema = z.object({
     question: z.string().describe("The interview question to ask next"),
     intention: z.string().describe("The reason/intention behind asking this specific question"),
-    expectedAnswer: z.string().describe("The ideal points/topics the candidate should cover in their answer")
+    expectedAnswer: z.string().describe("The ideal points/topics the candidate should cover in their answer"),
+    extractedSkills: z.array(z.string()).describe("List of exact skills/technologies from the resume that this question is strictly testing")
 })
 
-async function generateNextQuestion({ resume, jobDescription, role, difficulty, qnaHistory, currentRound }) {
-    const prompt = `You are an expert technical interviewer conducting a mock interview for the role of ${role || "Software Engineer"}.
+async function generateNextQuestion({ resumeProfile, jobDescription, role, difficulty, qnaHistory, currentRound, currentRoundPlan, coveredTopics, interviewId }) {
+    const prompt = `You are a Senior Technical Interviewer conducting a mock interview for the role of ${role || "Software Engineer"}.
     Difficulty Level: ${difficulty || "Intermediate"}
-    Candidate's Resume Content: ${resume || "Not provided"}
+    
+    Candidate's Resume Profile (JSON):
+    ${JSON.stringify(resumeProfile, null, 2)}
+    
     Job Description: ${jobDescription || "Not provided"}
     
     Current Interview Round: ${currentRound} (out of 5)
+    Current Round Plan: ${JSON.stringify(currentRoundPlan)}
+    Previously Covered Topics: ${JSON.stringify(coveredTopics)}
     
-    Guidelines for the current round:
-    - Round 1 (Introductory): Ask an icebreaker or general introductory question tailored to their profile (e.g. "Tell me about yourself" or "What motivated you to apply for this ${role} role?").
-    - Round 2 (Resume-based): Ask about a project, skill, or experience mentioned in their resume.
-    - Round 3 (Deep-dive): Ask a deeper technical follow-up or conceptually challenging question based on their previous answers/skills.
-    - Round 4 (Architecture / System Design): Ask about system design, overall architecture, or how they structured a component in their projects.
-    - Round 5 (Advanced / Scaling / Edge Cases): Ask how they would scale an application, handle extreme loads, handle security/auth issues, or solve an advanced problem.
-    
-    Complete QnA History so far (use this to ask contextual follow-up questions instead of starting a new topic if they just answered):
+    Complete QnA History so far:
     ${JSON.stringify(qnaHistory, null, 2)}
     
     CRITICAL INSTRUCTIONS:
-    1. Ask exactly ONE clear and specific question. Do not ask multiple questions.
-    2. Adapt dynamically! If the last answer in the QnA History was brief, incomplete, or interesting, ask a direct follow-up question about it (e.g. "Why did you choose React Context instead of Redux?" or "If this grew to 1 million users, what would change?").
-    3. Ensure the question's difficulty matches the level: ${difficulty}.
-    4. Provide the interviewer's intention and the expected answer details for evaluation purposes.`
+    1. EXPLICITLY reference the Candidate's Resume Profile. Your question MUST be derived from their listed skills, projects, experience, or education.
+    2. NEVER ask about technologies, tools, or concepts that DO NOT exist in the resume profile. If the resume has "React" but not "Angular", do not ask about Angular.
+    3. NO GENERIC QUESTIONS. Act like a senior engineer who read this specific resume.
+    4. PREVENT DUPLICATES. Do not ask about topics already in "Previously Covered Topics" or "QnA History" unless you are doing a deep-dive follow-up.
+    5. FOLLOW-UP BEHAVIOR: If the last answer in the QnA history was weak, incomplete, or interesting, prioritize asking a contextual follow-up question digging deeper into their previous answer over strictly following the new topic plan.
+    6. If you are not doing a follow-up, formulate exactly ONE clear question based on the 'Current Round Plan'.
+    7. Ensure the difficulty matches the target: ${currentRoundPlan?.difficultyTarget || difficulty}.
+    8. You must return the 'extractedSkills' array containing the exact resume technologies/skills you are testing with this question.`
+
+    const profileStr = resumeProfile ? JSON.stringify(resumeProfile) : "{}";
+    const profileLength = profileStr.length;
+    console.log(`\n--- NEW QUESTION GENERATION ---`);
+    console.log(`[Session ID / Resume ID: ${interviewId}]`);
+    console.log(`Parsed Resume Profile Length: ${profileLength}`);
+    console.log(`Prompt sent to LLM: \n${prompt.substring(0, 300)}...[TRUNCATED]`);
 
     try {
         const response = await ai.models.generateContent({
@@ -345,10 +400,19 @@ async function generateNextQuestion({ resume, jobDescription, role, difficulty, 
                 responseSchema: zodToJsonSchema(nextQuestionSchema),
             }
         });
-        return JSON.parse(response.text);
+        const result = JSON.parse(response.text);
+        console.log(`Number of extracted skills: ${result.extractedSkills?.length || 0} (${result.extractedSkills?.join(', ')})`);
+        console.log(`-------------------------------\n`);
+        return result;
     } catch (e) {
         console.error("Gemini next-question call failed:", e);
-        throw e;
+        // Fallback to prevent interview crash
+        return {
+            question: "Could you tell me more about your recent projects and the technologies you used?",
+            intention: "Fallback question to continue the interview due to an AI error.",
+            expectedAnswer: "The candidate should discuss their technical background and relevant experience.",
+            extractedSkills: []
+        };
     }
 }
 
