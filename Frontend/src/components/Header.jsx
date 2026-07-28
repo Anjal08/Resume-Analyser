@@ -15,18 +15,10 @@ const Header = ({ openAuthModal, setIsSidebarOpen }) => {
     const [searchQuery, setSearchQuery] = useState('')
     const [searchHistory, setSearchHistory] = useState([])
     const [isSearchHistoryOpen, setIsSearchHistoryOpen] = useState(false)
-    
-    // Notification states
-    const [notifications, setNotifications] = useState([
-        { id: 1, text: 'Your ATS Resume Analysis is ready!', time: '2 mins ago', read: false },
-        { id: 2, text: 'You have a mock interview scheduled for tomorrow.', time: '1 hour ago', read: false }
-    ])
-    const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
 
     const dropdownRef = useRef(null)
     const searchInputRef = useRef(null)
     const searchContainerRef = useRef(null)
-    const notificationsRef = useRef(null)
 
     useEffect(() => {
         // Initialize theme based on document attribute or localStorage
@@ -48,14 +40,6 @@ const Header = ({ openAuthModal, setIsSidebarOpen }) => {
         localStorage.setItem('theme', newTheme);
     }
 
-    const handleNotificationClick = () => {
-        setIsNotificationsOpen(!isNotificationsOpen);
-    }
-
-    const markNotificationsAsRead = () => {
-        setNotifications(notifications.map(n => ({ ...n, read: true })));
-    }
-
     useEffect(() => {
         const handleKeyDown = (e) => {
             // Check for Cmd+K (Mac) or Ctrl+K (Windows/Linux)
@@ -71,9 +55,33 @@ const Header = ({ openAuthModal, setIsSidebarOpen }) => {
         return () => document.removeEventListener('keydown', handleKeyDown);
     }, []);
 
+    const executeSearch = (query) => {
+        const lowerQuery = query.toLowerCase();
+        let targetPath = null;
+
+        if (lowerQuery.includes('interview') || lowerQuery.includes('mock')) {
+            targetPath = '/ai-interview';
+        } else if (lowerQuery.includes('resume') || lowerQuery.includes('ats') || lowerQuery.includes('cv')) {
+            targetPath = '/resume-analysis';
+        } else if (lowerQuery.includes('profile') || lowerQuery.includes('account')) {
+            targetPath = '/profile';
+        } else if (lowerQuery.includes('analytic') || lowerQuery.includes('performance')) {
+            targetPath = '/analytics';
+        } else if (lowerQuery.includes('setting')) {
+            targetPath = '/settings';
+        }
+
+        if (targetPath) {
+            toast.success(`Navigating to ${query}...`);
+            navigate(targetPath);
+        } else {
+            toast("No specific page found for that search. Try 'interview' or 'resume'.", { icon: '🔍' });
+        }
+    }
+
     const onSearchSubmit = (e) => {
         if (e.key === 'Enter' && searchQuery.trim() !== '') {
-            toast.success(`Searching for: ${searchQuery}`);
+            executeSearch(searchQuery);
             
             // Add to history
             const newHistory = [searchQuery, ...searchHistory.filter(item => item !== searchQuery)].slice(0, 5);
@@ -87,7 +95,12 @@ const Header = ({ openAuthModal, setIsSidebarOpen }) => {
     }
 
     const onHistoryItemClick = (item) => {
-        toast.success(`Searching for: ${item}`);
+        executeSearch(item);
+        
+        const newHistory = [item, ...searchHistory.filter(i => i !== item)].slice(0, 5);
+        setSearchHistory(newHistory);
+        localStorage.setItem('searchHistory', JSON.stringify(newHistory));
+
         setSearchQuery('');
         setIsSearchHistoryOpen(false);
         if (searchInputRef.current) searchInputRef.current.blur();
@@ -114,9 +127,6 @@ const Header = ({ openAuthModal, setIsSidebarOpen }) => {
             }
             if (searchContainerRef.current && !searchContainerRef.current.contains(event.target)) {
                 setIsSearchHistoryOpen(false)
-            }
-            if (notificationsRef.current && !notificationsRef.current.contains(event.target)) {
-                setIsNotificationsOpen(false)
             }
         }
         document.addEventListener("mousedown", handleClickOutside)
@@ -184,31 +194,6 @@ const Header = ({ openAuthModal, setIsSidebarOpen }) => {
                 <button className="icon-btn" title="Toggle Theme" onClick={toggleTheme}>
                     {theme === 'dark' ? <Sun size={18}/> : <Moon size={18}/>}
                 </button>
-                <div className="notification-container" ref={notificationsRef}>
-                    <button className="icon-btn" title="Notifications" onClick={handleNotificationClick}>
-                        <Bell size={18}/>
-                        {notifications.some(n => !n.read) && <span className="notification-badge"></span>}
-                    </button>
-                    {isNotificationsOpen && (
-                        <div className="notification-dropdown-menu">
-                            <div className="dropdown-header">
-                                <span>Notifications</span>
-                                <button onClick={markNotificationsAsRead} className="mark-read-btn">Mark all as read</button>
-                            </div>
-                            <div className="notification-list">
-                                {notifications.map(notification => (
-                                    <div key={notification.id} className={`notification-item ${notification.read ? 'read' : 'unread'}`}>
-                                        <div className="notification-content">{notification.text}</div>
-                                        <div className="notification-time">{notification.time}</div>
-                                    </div>
-                                ))}
-                                {notifications.length === 0 && (
-                                    <div className="notification-empty">No notifications</div>
-                                )}
-                            </div>
-                        </div>
-                    )}
-                </div>
             </div>
             
             {!user ? (
