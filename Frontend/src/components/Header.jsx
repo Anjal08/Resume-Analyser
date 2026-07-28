@@ -59,15 +59,28 @@ const Header = ({ openAuthModal, setIsSidebarOpen }) => {
         const lowerQuery = query.toLowerCase();
         let targetPath = null;
 
-        if (lowerQuery.includes('interview') || lowerQuery.includes('mock')) {
+        // Dashboard / Home
+        if (lowerQuery.includes('home') || lowerQuery.includes('dashboard') || lowerQuery.includes('main')) {
+            targetPath = '/';
+        }
+        // AI Mock Interviews
+        else if (lowerQuery.includes('interview') || lowerQuery.includes('mock') || lowerQuery.includes('practice') || lowerQuery.includes('speak') || lowerQuery.includes('video')) {
             targetPath = '/ai-interview';
-        } else if (lowerQuery.includes('resume') || lowerQuery.includes('ats') || lowerQuery.includes('cv')) {
+        } 
+        // Resume Analysis
+        else if (lowerQuery.includes('resume') || lowerQuery.includes('ats') || lowerQuery.includes('cv') || lowerQuery.includes('analyse') || lowerQuery.includes('analyze') || lowerQuery.includes('generate') || lowerQuery.includes('upload')) {
             targetPath = '/resume-analysis';
-        } else if (lowerQuery.includes('profile') || lowerQuery.includes('account')) {
+        } 
+        // Profile
+        else if (lowerQuery.includes('profile') || lowerQuery.includes('account') || lowerQuery.includes('user') || lowerQuery.includes('me')) {
             targetPath = '/profile';
-        } else if (lowerQuery.includes('analytic') || lowerQuery.includes('performance')) {
+        } 
+        // Analytics
+        else if (lowerQuery.includes('analytic') || lowerQuery.includes('performance') || lowerQuery.includes('score') || lowerQuery.includes('progress') || lowerQuery.includes('chart') || lowerQuery.includes('history')) {
             targetPath = '/analytics';
-        } else if (lowerQuery.includes('setting')) {
+        } 
+        // Settings
+        else if (lowerQuery.includes('setting') || lowerQuery.includes('config') || lowerQuery.includes('password') || lowerQuery.includes('theme')) {
             targetPath = '/settings';
         }
 
