@@ -1,4 +1,4 @@
-# Interview AI 🚀
+# Interview Master -- AI Interview Prep \& ATS Customizer
 > An AI-Powered Resume Analyzer, ATS Optimizer, and Mock Interview Simulator.
 
 [![React](https://img.shields.io/badge/Frontend-React%2019-blue?style=for-the-badge&logo=react)](https://react.dev/)
