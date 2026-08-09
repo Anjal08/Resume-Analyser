@@ -52,11 +52,16 @@ const skillGapSchema = new mongoose.Schema({
 const preparationPlanSchema = new mongoose.Schema({
     day: {
         type: Number,
-        required: [ true, "Day is required" ]
+    },
+    roundNumber: {
+        type: Number
     },
     focus: {
         type: String,
         required: [ true, "Focus is required" ]
+    },
+    assignedTopic: {
+        type: String
     },
     tasks: [ {
         type: String,
