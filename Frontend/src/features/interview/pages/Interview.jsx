@@ -5,7 +5,8 @@ import { useNavigate, useParams } from 'react-router'
 import { motion } from 'framer-motion'
 import { 
     Download, Target, PlayCircle, Clock, CheckCircle2, 
-    AlertCircle, FileText, Calendar, BrainCircuit, History 
+    AlertCircle, FileText, Calendar, BrainCircuit, History,
+    Check, ChevronDown, ChevronUp, AlertTriangle, XCircle, Info
 } from 'lucide-react'
 
 // Animation variants
@@ -30,6 +31,14 @@ const Interview = () => {
     const navigate = useNavigate()
     const { report, getReportById, loading, reports, getResumePdf } = useInterview()
     const { interviewId } = useParams()
+
+    const [expandedMatches, setExpandedMatches] = useState({});
+    const [showAllStrong, setShowAllStrong] = useState(false);
+    const [showAllPartial, setShowAllPartial] = useState(false);
+
+    const toggleMatch = (id) => {
+        setExpandedMatches(prev => ({ ...prev, [id]: !prev[id] }));
+    };
 
     useEffect(() => {
         if (interviewId) {
@@ -56,6 +65,9 @@ const Interview = () => {
     
     const requiredMissing = missingSkills.filter(m => m.type !== 'PREFERRED_NOT_EVIDENCED' && m.type !== 'ADVANCED_OPTIONAL');
     const preferredMissing = missingSkills.filter(m => m.type === 'PREFERRED_NOT_EVIDENCED' || m.type === 'ADVANCED_OPTIONAL');
+
+    const visibleStrong = showAllStrong ? strongMatches : strongMatches.slice(0, 4);
+    const visiblePartial = showAllPartial ? partialMatches : partialMatches.slice(0, 3);
 
     // Fallback parsing if backend roadmap/profile wasn't generated
     const roadmap = report.preparationPlan || report.roadmap || [];
@@ -176,76 +188,150 @@ const Interview = () => {
                     
                     <div className="skill-group">
                         <h4 className="group-title text-success">🟢 Strong Matches</h4>
-                        <div className="chip-container detailed-chips">
-                            {strongMatches.length > 0 ? strongMatches.map((match, i) => (
-                                <div key={i} className="detailed-chip">
-                                    <div className="chip-header">
-                                        <span className="chip chip-success">{match.skill}</span>
-                                        {match.confidence && <span className="confidence-badge">Confidence: {match.confidence}%</span>}
-                                        {match.category && <span className="category-badge">{match.category}</span>}
-                                    </div>
-                                    {match.evidence && (
-                                        <div className="evidence-box">
-                                            {Array.isArray(match.evidence) 
-                                                ? match.evidence.map((ev, j) => <p key={j} className="evidence-text">• {ev}</p>) 
-                                                : <p className="evidence-text">• {match.evidence}</p>}
+                        <div className="matches-grid">
+                            {visibleStrong.length > 0 ? visibleStrong.map((match, i) => {
+                                const isExpanded = expandedMatches[`strong-${i}`];
+                                return (
+                                    <div key={i} className="match-card">
+                                        <div className="match-header">
+                                            <div className="match-title-row">
+                                                <div className="title-left">
+                                                    <Check size={18} className="icon-success" />
+                                                    <span className="match-name">{match.skill}</span>
+                                                </div>
+                                                {match.confidence && <div className="title-right">{match.confidence}%</div>}
+                                            </div>
+                                            <div className="match-meta-row">
+                                                {match.category && <span className="category-badge">{match.category}</span>}
+                                                <span className="short-evidence">
+                                                    {Array.isArray(match.evidence) ? match.evidence[0] : match.evidence}
+                                                </span>
+                                            </div>
+                                            <button className="expand-btn" onClick={() => toggleMatch(`strong-${i}`)}>
+                                                {isExpanded ? 'Hide Evidence' : 'View Evidence'} {isExpanded ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
+                                            </button>
                                         </div>
-                                    )}
-                                    {match.sources && match.sources.length > 0 && <p className="source-text">Source: {match.sources.join(' + ')}</p>}
-                                </div>
-                            )) : <p className="empty-text">No strong matches found.</p>}
+                                        <div className={`match-details ${isExpanded ? 'expanded' : ''}`}>
+                                            {match.evidence && (
+                                                <div className="evidence-box">
+                                                    {Array.isArray(match.evidence) 
+                                                        ? match.evidence.map((ev, j) => <p key={j} className="evidence-text">• {ev}</p>) 
+                                                        : <p className="evidence-text">• {match.evidence}</p>}
+                                                </div>
+                                            )}
+                                            {match.sources && match.sources.length > 0 && <p className="detail-text"><strong>Source:</strong> {match.sources.join(' + ')}</p>}
+                                        </div>
+                                    </div>
+                                );
+                            }) : <p className="empty-text">No strong matches found.</p>}
                         </div>
+                        {strongMatches.length > 4 && (
+                            <button className="show-more-btn" onClick={() => setShowAllStrong(!showAllStrong)}>
+                                {showAllStrong ? 'Show Less' : `Show All (${strongMatches.length})`}
+                            </button>
+                        )}
                     </div>
 
                     <div className="skill-group" style={{ marginTop: '1.5rem' }}>
                         <h4 className="group-title text-warning">🟡 Partial / Related Matches</h4>
-                        <div className="chip-container detailed-chips">
-                            {partialMatches.length > 0 ? partialMatches.map((match, i) => (
-                                <div key={i} className="detailed-chip">
-                                    <div className="chip-header">
-                                        <span className="chip chip-warning">{match.skill}</span>
-                                        {match.confidence && <span className="confidence-badge">Confidence: {match.confidence}%</span>}
-                                    </div>
-                                    {match.evidence && (
-                                        <div className="evidence-box">
-                                            {Array.isArray(match.evidence) 
-                                                ? match.evidence.map((ev, j) => <p key={j} className="evidence-text">• {ev}</p>) 
-                                                : <p className="evidence-text">• {match.evidence}</p>}
+                        <div className="matches-list">
+                            {visiblePartial.length > 0 ? visiblePartial.map((match, i) => {
+                                const isExpanded = expandedMatches[`partial-${i}`];
+                                return (
+                                    <div key={i} className="match-row">
+                                        <div className="match-header">
+                                            <div className="title-left">
+                                                <AlertTriangle size={18} className="icon-warning" />
+                                                <span className="match-name">{match.skill}</span>
+                                            </div>
+                                            <div className="meta-center">
+                                                {match.confidence && <span className="confidence-text">{match.confidence}%</span>}
+                                                {match.remainingGap && <span className="priority-badge severity-medium-gap">Medium Gap</span>}
+                                            </div>
+                                            <div className="action-right">
+                                                <button className="expand-btn" onClick={() => toggleMatch(`partial-${i}`)}>
+                                                    Details {isExpanded ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
+                                                </button>
+                                            </div>
                                         </div>
-                                    )}
-                                    {match.remainingGap && <p className="gap-text">Remaining Gap: {match.remainingGap}</p>}
-                                </div>
-                            )) : <p className="empty-text">No partial matches found.</p>}
+                                        <div className={`match-details ${isExpanded ? 'expanded' : ''}`}>
+                                            {match.evidence && (
+                                                <div className="evidence-box">
+                                                    {Array.isArray(match.evidence) 
+                                                        ? match.evidence.map((ev, j) => <p key={j} className="evidence-text">• {ev}</p>) 
+                                                        : <p className="evidence-text">• {match.evidence}</p>}
+                                                </div>
+                                            )}
+                                            {match.remainingGap && <p className="detail-text gap-text"><strong>Remaining Gap:</strong> {match.remainingGap}</p>}
+                                        </div>
+                                    </div>
+                                );
+                            }) : <p className="empty-text">No partial matches found.</p>}
                         </div>
+                        {partialMatches.length > 3 && (
+                            <button className="show-more-btn" onClick={() => setShowAllPartial(!showAllPartial)}>
+                                {showAllPartial ? 'Show Less' : `Show All (${partialMatches.length})`}
+                            </button>
+                        )}
                     </div>
 
                     <div className="skill-group" style={{ marginTop: '1.5rem' }}>
                         <h4 className="group-title text-danger">🔴 Required & Not Evidenced</h4>
-                        <div className="chip-container detailed-chips">
-                            {requiredMissing.length > 0 ? requiredMissing.map((match, i) => (
-                                <div key={i} className="detailed-chip">
-                                    <div className="chip-header">
-                                        <span className="chip chip-danger">{match.skill}</span>
-                                        {match.priority && <span className={`priority-badge priority-${match.priority.toLowerCase()}`}>{match.priority} PRIORITY</span>}
+                        <div className="matches-list">
+                            {requiredMissing.length > 0 ? requiredMissing.map((match, i) => {
+                                const isExpanded = expandedMatches[`required-${i}`];
+                                return (
+                                    <div key={i} className="match-row">
+                                        <div className="match-header">
+                                            <div className="title-left">
+                                                <XCircle size={18} className="icon-danger" />
+                                                <span className="match-name">{match.skill}</span>
+                                            </div>
+                                            <div className="meta-center">
+                                                {match.priority && <span className={`priority-badge priority-${match.priority.toLowerCase()}`}>{match.priority} PRIORITY</span>}
+                                            </div>
+                                            <div className="action-right">
+                                                <button className="expand-btn" onClick={() => toggleMatch(`required-${i}`)}>
+                                                    Details {isExpanded ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div className={`match-details ${isExpanded ? 'expanded' : ''}`}>
+                                            <p className="detail-text"><strong>Missing Evidence:</strong> Not explicitly evidenced in the resume.</p>
+                                        </div>
                                     </div>
-                                    <p className="missing-text">⚠️ Not explicitly evidenced in the resume.</p>
-                                </div>
-                            )) : <p className="empty-text">No critical skills missing.</p>}
+                                );
+                            }) : <p className="empty-text">No critical skills missing.</p>}
                         </div>
                     </div>
 
                     <div className="skill-group" style={{ marginTop: '1.5rem' }}>
                         <h4 className="group-title text-secondary" style={{color: 'var(--text-secondary)'}}>⚪ Preferred / Advanced</h4>
-                        <div className="chip-container detailed-chips">
-                            {preferredMissing.length > 0 ? preferredMissing.map((match, i) => (
-                                <div key={i} className="detailed-chip">
-                                    <div className="chip-header">
-                                        <span className="chip" style={{backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)'}}>{match.skill}</span>
-                                        {match.priority && <span className={`priority-badge priority-${match.priority.toLowerCase()}`}>{match.priority} PRIORITY</span>}
+                        <div className="matches-list">
+                            {preferredMissing.length > 0 ? preferredMissing.map((match, i) => {
+                                const isExpanded = expandedMatches[`preferred-${i}`];
+                                return (
+                                    <div key={i} className="match-row">
+                                        <div className="match-header">
+                                            <div className="title-left">
+                                                <Info size={18} className="icon-secondary" />
+                                                <span className="match-name">{match.skill}</span>
+                                            </div>
+                                            <div className="meta-center">
+                                                {match.priority && <span className={`priority-badge priority-${match.priority.toLowerCase()}`}>{match.priority} PRIORITY</span>}
+                                            </div>
+                                            <div className="action-right">
+                                                <button className="expand-btn" onClick={() => toggleMatch(`preferred-${i}`)}>
+                                                    Details {isExpanded ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div className={`match-details ${isExpanded ? 'expanded' : ''}`}>
+                                            <p className="detail-text"><strong>Information:</strong> Optional or preferred skill not explicitly evidenced.</p>
+                                        </div>
                                     </div>
-                                    <p className="missing-text">Optional/preferred skill not explicitly evidenced.</p>
-                                </div>
-                            )) : <p className="empty-text">No preferred skills requested.</p>}
+                                );
+                            }) : <p className="empty-text">No preferred skills requested.</p>}
                         </div>
                     </div>
 
@@ -256,18 +342,30 @@ const Interview = () => {
             <motion.section className="content-section" variants={itemVariants}>
                 <h2 className="section-title"><Clock size={20}/> AI Preparation Roadmap</h2>
                 <div className="roadmap-timeline">
-                    {roadmap.map((step, i) => (
+                    {roadmap.length > 0 ? roadmap.map((step, i) => (
                         <div key={i} className="timeline-item card">
                             <div className="timeline-marker"></div>
                             <div className="timeline-content">
                                 <div className="timeline-header">
-                                    <h4>Round {step.roundNumber || step.day}</h4>
-                                    <span className="badge">{step.focus || step.difficultyTarget || 'Focus'}</span>
+                                    <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem'}}>
+                                        <h4>Round {step.roundNumber || step.day || (i + 1)}</h4>
+                                        <span className="badge">{step.focus || step.difficultyTarget || 'Focus'}</span>
+                                    </div>
+                                    {(step.priority || step.difficulty) && (
+                                        <span className={`priority-badge priority-${(step.priority || step.difficulty).toLowerCase()}`}>{step.priority || step.difficulty}</span>
+                                    )}
                                 </div>
-                                <p className="timeline-topic">{step.assignedTopic || (step.tasks && step.tasks.join(', ')) || 'General Review'}</p>
+                                <div className="timeline-topic" style={{marginTop: '0.75rem'}}>
+                                    <strong style={{color: 'var(--text-secondary)', fontSize: '0.85rem', textTransform: 'uppercase'}}>Preparation Topics:</strong> 
+                                    <ul style={{margin: '0.5rem 0 0 1.25rem', padding: 0, color: 'var(--text-primary)', fontSize: '0.95rem'}}>
+                                        {Array.isArray(step.tasks) ? step.tasks.slice(0, 5).map((t, idx) => (
+                                            <li key={idx} style={{marginBottom: '0.35rem'}}>{t}</li>
+                                        )) : <li>{step.assignedTopic || 'General Review'}</li>}
+                                    </ul>
+                                </div>
                             </div>
                         </div>
-                    ))}
+                    )) : <p className="empty-text" style={{marginLeft: '1.5rem', color: 'var(--text-secondary)'}}>No preparation roadmap available.</p>}
                 </div>
             </motion.section>
 
