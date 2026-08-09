@@ -24,6 +24,20 @@ const interviewReportSchema = z.object({
         skill: z.string().describe("The skill which the candidate is lacking"),
         severity: z.enum([ "low", "medium", "high" ]).describe("The severity of this skill gap, i.e. how important is this skill for the job and how much it can impact the candidate's chances")
     })).describe("List of skill gaps in the candidate's profile along with their severity"),
+    matchedSkills: z.array(z.string()).describe("List of skills from the candidate's profile that match the job description requirements"),
+    skillAnalysis: z.object({
+        strongMatches: z.array(z.object({
+            skill: z.string().describe("The skill from the JD"),
+            evidence: z.string().describe("Evidence from the resume supporting this match (e.g. project usage, explicit mention)")
+        })).describe("Skills from the JD that are explicitly or very strongly matched in the resume (exact match or clear alias)"),
+        partialMatches: z.array(z.object({
+            skill: z.string().describe("The skill from the JD"),
+            evidence: z.string().describe("Evidence from the resume explaining why this is a partial/related match")
+        })).describe("Skills from the JD that are not exactly present, but the candidate has related experience, adjacent tech, or partial conceptual knowledge"),
+        missingSkills: z.array(z.object({
+            skill: z.string().describe("The skill from the JD that is completely missing")
+        })).describe("Skills from the JD that have absolutely no meaningful evidence or related experience in the resume")
+    }).describe("Multi-level evidence-based skill matching analysis against the job description"),
     preparationPlan: z.array(z.object({
         day: z.number().describe("The day number in the preparation plan, starting from 1"),
         focus: z.string().describe("The main focus of this day in the preparation plan, e.g. data structures, system design, mock interviews etc."),
@@ -57,11 +71,19 @@ async function generateInterviewReport({ resume, selfDescription, jobDescription
 
                         CRITICAL INSTRUCTIONS:
                         1. Limit the preparationPlan to EXACTLY 5 days to keep the response concise.
-                        2. Provide exactly 3 technical questions and 3 behavioral questions.
+                        2. Provide exactly 3 technical questions and 3 behavioral questions. 
+                           - Generate questions that test the candidate's actual claimed knowledge based on their resume.
+                           - When testing a missing/partial skill, DO NOT falsely assume they possess it (e.g., ask how they would extend their existing project to use this missing skill).
                         3. Keep all answers and descriptions brief and straight to the point.
                         4. Extract a highly accurate "resumeProfile" encompassing all skills, projects, and technologies.
                         5. Generate a 5-round "roadmap" for the upcoming mock interview. Map Round 1 to Introductory, Round 2 to Intermediate (e.g., a specific Project), Round 3 to Deep-dive (e.g., a specific Skill), Round 4 to Deep-dive/Architecture (e.g., Experience), and Round 5 to Advanced.
-                        6. Ensure every roadmap topic explicitly references an item from the "resumeProfile".
+                           - Ensure the roadmap prioritizes critical missing skills and partial matches.
+                        6. SKILL ANALYSIS INSTRUCTIONS: You MUST perform a rigorous 3-level skill analysis in the "skillAnalysis" object comparing the JD against the Resume.
+                           - LEVEL 1 (Strong Match): Exact strings, standard aliases (e.g., "Google Gemini" -> "Gemini API"), or clearly equivalent technology. MUST include evidence.
+                           - LEVEL 2 (Partial/Related Match): Semantic relevance, adjacent technologies (e.g. JD needs "Agentic AI", candidate has "autonomous pair-programmer"). DO NOT overclaim (e.g., "Whisper" is partial evidence for "Speech-to-Text" but DOES NOT mean the candidate knows "Text-to-Speech"). MUST include evidence.
+                           - LEVEL 3 (Missing): No meaningful evidence in resume. Do not hallucinate matches.
+                        7. ATS SCORE (matchScore): Compute a realistic ATS score (0-100). If critical skills are missing or there are 0 strong matches, the score should NOT be artificially high (e.g. do not give 88% if 0 matches). Weight Strong and Partial matches appropriately.
+                        8. Ensure every roadmap topic explicitly references an item from the "resumeProfile" or addresses a specific gap from "skillAnalysis".
 `
 
     console.log("Calling Gemini with prompt length:", prompt.length);

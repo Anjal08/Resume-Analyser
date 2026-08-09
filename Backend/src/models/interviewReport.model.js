@@ -81,6 +81,21 @@ const questionPlanSchema = new mongoose.Schema({
     difficultyTarget: { type: String, required: true }
 }, { _id: false });
 
+const skillMatchSchema = new mongoose.Schema({
+    skill: { type: String, required: true },
+    evidence: { type: String, required: true }
+}, { _id: false });
+
+const missingSkillSchema = new mongoose.Schema({
+    skill: { type: String, required: true }
+}, { _id: false });
+
+const skillAnalysisSchema = new mongoose.Schema({
+    strongMatches: [ skillMatchSchema ],
+    partialMatches: [ skillMatchSchema ],
+    missingSkills: [ missingSkillSchema ]
+}, { _id: false });
+
 const interviewReportSchema = new mongoose.Schema({
     jobDescription: {
         type: String,
@@ -100,6 +115,8 @@ const interviewReportSchema = new mongoose.Schema({
     technicalQuestions: [ technicalQuestionSchema ],
     behavioralQuestions: [ behavioralQuestionSchema ],
     skillGaps: [ skillGapSchema ],
+    matchedSkills: [ String ],
+    skillAnalysis: skillAnalysisSchema,
     preparationPlan: [ preparationPlanSchema ],
     resumeProfile: resumeProfileSchema,
     roadmap: [ questionPlanSchema ],

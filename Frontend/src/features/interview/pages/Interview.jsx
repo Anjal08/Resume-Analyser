@@ -46,8 +46,13 @@ const Interview = () => {
         )
     }
 
-    const missingSkills = report.skillGaps ? report.skillGaps.filter(g => g.severity === 'high' || g.severity === 'medium') : [];
-    const matchedSkills = report.skillGaps ? report.skillGaps.filter(g => g.severity === 'low') : [];
+    const strongMatches = report.skillAnalysis?.strongMatches || (report.matchedSkills 
+        ? report.matchedSkills.map(skill => ({ skill })) 
+        : (report.skillGaps ? report.skillGaps.filter(g => g.severity === 'low') : []));
+    
+    const partialMatches = report.skillAnalysis?.partialMatches || [];
+    
+    const missingSkills = report.skillAnalysis?.missingSkills || (report.skillGaps ? report.skillGaps.filter(g => g.severity === 'high' || g.severity === 'medium') : []);
     
     // Fallback parsing if backend roadmap/profile wasn't generated
     const roadmap = report.roadmap || report.preparationPlan || [];
@@ -106,7 +111,7 @@ const Interview = () => {
                 </div>
                 <div className="stat-card">
                     <p className="stat-label">Matched Skills</p>
-                    <h3 className="stat-value text-success">{matchedSkills.length}</h3>
+                    <h3 className="stat-value text-success">{strongMatches.length}</h3>
                 </div>
                 <div className="stat-card">
                     <p className="stat-label">Questions Generated</p>
@@ -116,27 +121,46 @@ const Interview = () => {
                 </div>
             </motion.section>
 
-            {/* 3. Skill Gap Analysis */}
+            {/* 3. Skill Match Analysis */}
             <motion.section className="content-section" variants={itemVariants}>
-                <h2 className="section-title"><Target size={20}/> Skill Gap Analysis</h2>
+                <h2 className="section-title"><Target size={20}/> Skill Match Analysis</h2>
                 <div className="card large-card skill-analysis">
+                    
                     <div className="skill-group">
-                        <h4 className="group-title text-danger">Critical Missing Skills</h4>
-                        <div className="chip-container">
-                            {missingSkills.length > 0 ? missingSkills.map((gap, i) => (
-                                <span key={i} className="chip chip-danger">{gap.skill}</span>
+                        <h4 className="group-title text-success">🟢 Strong Matches</h4>
+                        <div className="chip-container detailed-chips">
+                            {strongMatches.length > 0 ? strongMatches.map((match, i) => (
+                                <div key={i} className="detailed-chip">
+                                    <span className="chip chip-success">{match.skill}</span>
+                                    {match.evidence && <p className="evidence-text">Evidence: {match.evidence}</p>}
+                                </div>
+                            )) : <p className="empty-text">No strong matches found.</p>}
+                        </div>
+                    </div>
+
+                    <div className="skill-group" style={{ marginTop: '1.5rem' }}>
+                        <h4 className="group-title text-warning">🟡 Partial / Related Matches</h4>
+                        <div className="chip-container detailed-chips">
+                            {partialMatches.length > 0 ? partialMatches.map((match, i) => (
+                                <div key={i} className="detailed-chip">
+                                    <span className="chip chip-warning" style={{ background: 'rgba(234, 179, 8, 0.15)', color: '#eab308' }}>{match.skill}</span>
+                                    {match.evidence && <p className="evidence-text">Evidence: {match.evidence}</p>}
+                                </div>
+                            )) : <p className="empty-text">No partial matches found.</p>}
+                        </div>
+                    </div>
+
+                    <div className="skill-group" style={{ marginTop: '1.5rem' }}>
+                        <h4 className="group-title text-danger">🔴 Missing Skills</h4>
+                        <div className="chip-container detailed-chips">
+                            {missingSkills.length > 0 ? missingSkills.map((match, i) => (
+                                <div key={i} className="detailed-chip">
+                                    <span className="chip chip-danger">{match.skill}</span>
+                                </div>
                             )) : <p className="empty-text">No critical skills missing.</p>}
                         </div>
                     </div>
-                    
-                    <div className="skill-group">
-                        <h4 className="group-title text-success">Matched Skills</h4>
-                        <div className="chip-container">
-                            {matchedSkills.length > 0 ? matchedSkills.map((gap, i) => (
-                                <span key={i} className="chip chip-success">{gap.skill}</span>
-                            )) : <p className="empty-text">No matches found.</p>}
-                        </div>
-                    </div>
+
                 </div>
             </motion.section>
 
