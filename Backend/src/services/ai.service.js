@@ -19,12 +19,15 @@ const intelligenceReportSchema = z.object({
     
     interviewQuestions: z.array(z.object({
         question: z.string().describe("The specific interview question"),
-        category: z.string().describe("E.g., PROJECT, TECHNICAL, JOB-SPECIFIC, AI/ML CONCEPT, SYSTEM DESIGN, SKILL GAP"),
-        difficulty: z.string().describe("Introductory, Intermediate, Deep-dive, or Advanced"),
-        reason: z.string().describe("Why this question is being asked based on the resume/JD"),
+        category: z.string().describe("E.g., PROJECT, TECHNICAL, JOB-SPECIFIC, AI/ML CONCEPT, SYSTEM DESIGN, BEHAVIORAL, SKILL GAP"),
+        difficulty: z.enum(["BASIC", "INTERMEDIATE", "ADVANCED"]).describe("Difficulty level"),
+        priority: z.enum(["HIGH", "MEDIUM", "LOW"]).describe("Priority of the question"),
+        intent: z.string().describe("Why the interviewer is asking this question"),
         relatedSkill: z.string().describe("The core skill being tested"),
-        source: z.string().describe("Where this question was derived from (e.g., specific project or missing JD requirement)")
-    })).describe("Highly specific, structured interview questions"),
+        source: z.string().describe("Where this question was derived from (e.g., specific project or missing JD requirement)"),
+        strongAnswerPoints: z.array(z.string()).describe("3-5 points a strong answer should cover"),
+        followUps: z.array(z.string()).describe("2-3 natural interviewer follow-up questions")
+    })).describe("Highly specific, structured interview questions in multiple layers (Fundamental to Implementation/Scale)"),
     
     skillAnalysis: z.object({
         strongMatches: z.array(z.object({
@@ -52,11 +55,11 @@ const intelligenceReportSchema = z.object({
     }).describe("Multi-level evidence-based skill matching analysis"),
     
     preparationRoadmap: z.array(z.object({
-        roundNumber: z.number().describe("Round number (1 to 5)"),
-        focus: z.string().describe("The main focus (e.g., 'RESUME & FUNDAMENTALS', 'PROJECT DEEP DIVE')"),
-        assignedTopic: z.string().describe("Specific topic to prepare"),
-        tasks: z.array(z.string()).describe("Specific preparation tasks")
-    })).describe("Personalized 5-round preparation roadmap"),
+        sectionName: z.string().describe("Name of the section (e.g., 'CORE FUNDAMENTALS', 'RESUME & PROJECT DEEP DIVE', 'BEHAVIORAL / HR')"),
+        focus: z.string().describe("The main focus of this section"),
+        priority: z.enum(["HIGH", "MEDIUM", "LOW"]).describe("Priority of this preparation section"),
+        tasks: z.array(z.string()).describe("Specific preparation topics/tasks")
+    })).describe("Personalized preparation roadmap divided into 6 meaningful logical sections"),
     
     title: z.string().describe("The title of the job"),
     
@@ -80,23 +83,25 @@ async function generateInterviewReport({ resume, selfDescription, jobDescription
                         Job Description: ${jobDescription}
 
                         CRITICAL INSTRUCTIONS:
-                        1. JOB DESCRIPTION CLASSIFICATION: Use meaningful categories. Examples: "LLM usage patterns" -> LLM_APPLICATIONS, "API integrations" -> AI_INTEGRATION, "Machine Learning" / "NLP" -> AI_ML_CONCEPTS, "Python" -> PROGRAMMING_LANGUAGE, "React" -> WEB_TECHNOLOGY, "Whisper" -> SPEECH_AI, "Agentic AI" / "Chatbots" -> AI_SYSTEMS, "LangChain" -> AI_FRAMEWORKS.
-                        2. MERGE DUPLICATES: Merge related concepts into single missing skills (e.g., "Embeddings and vector search" and "Vector databases" must be merged into one gap: "Vector Search / Vector Databases").
-                        3. WHISPER & VOICEBOTS: Whisper is "SPEECH_AI". Do NOT claim complete voicebot development from Whisper alone. Voicebots require STT + LLM + TTS. If only STT exists, Voicebot is a PARTIAL_MATCH (Reason: "Demonstrates STT but not a complete voicebot workflow").
-                        4. AGENTIC AI: If candidate has autonomous AI pair-programmer but no formal framework (LangChain/CrewAI), classify Agentic AI as PARTIAL_MATCH. Remaining gap: "No explicit evidence of a dedicated agent framework." Do NOT claim LangChain/CrewAI knowledge from absence.
-                        5. SEMANTIC MATCHING & CONFIDENCE: Do not default confidence to 95%. Derive from evidence:
-                           - DIRECT skill + project evidence + experience -> 95-100%
-                           - DIRECT skill + project evidence -> 85-94%
-                           - Technical skills section only -> 70-84%
-                           - Related concept only -> 50-69%
-                           - Weak semantic relationship -> 30-49%
-                           - No evidence -> 0%
-                        6. MISSING SKILLS LANGUAGE: If missing, say "Not explicitly evidenced in the resume." NEVER say "Candidate does not know X." Categorize priority as HIGH, MEDIUM, or LOW based on job relevance.
-                        7. SUMMARY: Create a concise 2-3 line candidate summary in "resumeProfile.summary" (e.g. "AI-focused software developer with hands-on experience in Machine Learning...").
-                        8. INTERVIEW QUESTIONS: Provide 6 structured questions.
-                        9. INTERVIEW ROADMAP: Generate exactly 5 rounds: ROUND 1 - RESUME & FUNDAMENTALS, ROUND 2 - PROJECT DEEP DIVE, ROUND 3 - JOB-SPECIFIC TECHNICAL, ROUND 4 - SKILL GAP ASSESSMENT, ROUND 5 - ADVANCED / OPTIONAL.
-                        10. RAW SCORES: Evaluate qualitative aspects (projectRelevance, experience, education, atsReadability, evidenceStrength) from 0 to 100.
-`
+                        1. JOB DESCRIPTION CLASSIFICATION: Use meaningful categories (e.g. LLM_APPLICATIONS, AI_INTEGRATION, AI_ML_CONCEPTS, PROGRAMMING_LANGUAGE, WEB_TECHNOLOGY).
+                        2. MERGE DUPLICATES: Merge related concepts into single missing skills.
+                        3. SEMANTIC MATCHING & CONFIDENCE: Derive from evidence (95-100% for DIRECT skill + project evidence, down to 0% for no evidence).
+                        4. MISSING SKILLS LANGUAGE: If missing, say "Not explicitly evidenced in the resume." NEVER say "Candidate does not know X." Priority should depend on JD importance and core role requirement (not blindly HIGH).
+                        5. SUMMARY: Create a concise 2-3 line candidate summary.
+                        6. INTERVIEW QUESTIONS (LAYERED & EVIDENCE-BASED): Provide 6-8 deep questions.
+                           - Do NOT ask generic "What is X" questions exclusively.
+                           - Use layers: LEVEL 1 (Fundamental), LEVEL 2 (Project-Specific), LEVEL 3 (Implementation), LEVEL 4 (Design Decision), LEVEL 5 (Edge Case), LEVEL 6 (Scalability). 
+                           - Ensure every project-specific question is grounded in evidence. Do NOT invent implementations (e.g., CRDT or RAG) if the resume doesn't claim them. Use "intent" to explain why the question is asked. 
+                           - Ensure difficulty is strictly BASIC, INTERMEDIATE, or ADVANCED. 
+                           - Ensure priority is strictly HIGH, MEDIUM, or LOW based on relevance.
+                        7. INTERVIEW ROADMAP: Generate exactly up to 6 logical sections (only include if relevant):
+                           - SECTION 1: CORE FUNDAMENTALS
+                           - SECTION 2: RESUME & PROJECT DEEP DIVE
+                           - SECTION 3: AI / ML / GENAI FUNDAMENTALS (Only if AI role)
+                           - SECTION 4: JOB-SPECIFIC GAPS
+                           - SECTION 5: SYSTEM DESIGN / ENGINEERING (Only if appropriate)
+                           - SECTION 6: BEHAVIORAL / HR
+                        8. RAW SCORES: Evaluate qualitative aspects from 0 to 100.`
 
     console.log("Calling Gemini with prompt length:", prompt.length);
     try {

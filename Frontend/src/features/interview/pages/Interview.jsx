@@ -348,7 +348,7 @@ const Interview = () => {
                             <div className="timeline-content">
                                 <div className="timeline-header">
                                     <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem'}}>
-                                        <h4>Round {step.roundNumber || step.day || (i + 1)}</h4>
+                                        <h4>{step.sectionName || (step.roundNumber ? `Round ${step.roundNumber}` : (step.day ? `Day ${step.day}` : `Round ${i + 1}`))}</h4>
                                         <span className="badge">{step.focus || step.difficultyTarget || 'Focus'}</span>
                                     </div>
                                     {(step.priority || step.difficulty) && (
@@ -381,8 +381,18 @@ const Interview = () => {
                             </div>
                             <p className="q-text">{q.question}</p>
                             {q.reason && <p className="q-intention"><strong>Reason:</strong> {q.reason}</p>}
+                            {q.intent && <p className="q-intention"><strong>Intent:</strong> {q.intent}</p>}
+                            {q.priority && <p className="q-intention"><strong>Priority:</strong> <span className={`priority-badge priority-${q.priority.toLowerCase()}`}>{q.priority}</span></p>}
                             {q.relatedSkill && <p className="q-intention"><strong>Tests:</strong> {q.relatedSkill}</p>}
-                            {q.intention && !q.reason && <p className="q-intention"><strong>Focus:</strong> {q.intention}</p>}
+                            {q.strongAnswerPoints && q.strongAnswerPoints.length > 0 && (
+                                <p className="q-intention" style={{marginTop: '0.5rem'}}>
+                                    <strong>Strong Answer covers:</strong> 
+                                    <ul style={{margin: '0.2rem 0 0 1rem', padding: 0}}>
+                                        {q.strongAnswerPoints.slice(0, 3).map((p, idx) => <li key={idx}>{p}</li>)}
+                                    </ul>
+                                </p>
+                            )}
+                            {q.intention && !q.reason && !q.intent && <p className="q-intention"><strong>Focus:</strong> {q.intention}</p>}
                         </div>
                     ))}
                 </div>
