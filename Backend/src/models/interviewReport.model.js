@@ -81,13 +81,40 @@ const questionPlanSchema = new mongoose.Schema({
     difficultyTarget: { type: String, required: true }
 }, { _id: false });
 
+const scoreBreakdownSchema = new mongoose.Schema({
+    requiredSkills: { type: Number },
+    technicalSkills: { type: Number },
+    projectRelevance: { type: Number },
+    experience: { type: Number },
+    keywordCoverage: { type: Number },
+    education: { type: Number },
+    atsReadability: { type: Number },
+    evidenceStrength: { type: Number }
+}, { _id: false });
+
+const interviewQuestionSchema = new mongoose.Schema({
+    question: { type: String, required: true },
+    category: { type: String },
+    difficulty: { type: String },
+    reason: { type: String },
+    relatedSkill: { type: String },
+    source: { type: String }
+}, { _id: false });
+
 const skillMatchSchema = new mongoose.Schema({
     skill: { type: String, required: true },
-    evidence: { type: String, required: true }
+    category: { type: String },
+    status: { type: String },
+    confidence: { type: Number },
+    evidence: [String],
+    sources: [String],
+    remainingGap: { type: String }
 }, { _id: false });
 
 const missingSkillSchema = new mongoose.Schema({
-    skill: { type: String, required: true }
+    skill: { type: String, required: true },
+    priority: { type: String },
+    type: { type: String }
 }, { _id: false });
 
 const skillAnalysisSchema = new mongoose.Schema({
@@ -112,6 +139,8 @@ const interviewReportSchema = new mongoose.Schema({
         min: 0,
         max: 100,
     },
+    scoreBreakdown: scoreBreakdownSchema,
+    interviewQuestions: [ interviewQuestionSchema ],
     technicalQuestions: [ technicalQuestionSchema ],
     behavioralQuestions: [ behavioralQuestionSchema ],
     skillGaps: [ skillGapSchema ],

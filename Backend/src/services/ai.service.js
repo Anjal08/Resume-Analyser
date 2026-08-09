@@ -8,82 +8,94 @@ const ai = new GoogleGenAI({
 })
 
 
-const interviewReportSchema = z.object({
-    matchScore: z.number().describe("A score between 0 and 100 indicating how well the candidate's profile matches the job describe"),
-    technicalQuestions: z.array(z.object({
-        question: z.string().describe("The technical question can be asked in the interview"),
-        intention: z.string().describe("The intention of interviewer behind asking this question"),
-        answer: z.string().describe("How to answer this question, what points to cover, what approach to take etc.")
-    })).describe("Technical questions that can be asked in the interview along with their intention and how to answer them"),
-    behavioralQuestions: z.array(z.object({
-        question: z.string().describe("The technical question can be asked in the interview"),
-        intention: z.string().describe("The intention of interviewer behind asking this question"),
-        answer: z.string().describe("How to answer this question, what points to cover, what approach to take etc.")
-    })).describe("Behavioral questions that can be asked in the interview along with their intention and how to answer them"),
-    skillGaps: z.array(z.object({
-        skill: z.string().describe("The skill which the candidate is lacking"),
-        severity: z.enum([ "low", "medium", "high" ]).describe("The severity of this skill gap, i.e. how important is this skill for the job and how much it can impact the candidate's chances")
-    })).describe("List of skill gaps in the candidate's profile along with their severity"),
-    matchedSkills: z.array(z.string()).describe("List of skills from the candidate's profile that match the job description requirements"),
+const intelligenceReportSchema = z.object({
+    rawScores: z.object({
+        projectRelevance: z.number().describe("0-100: How relevant are the candidate's projects to the job"),
+        experience: z.number().describe("0-100: How well does the experience match the job requirements"),
+        education: z.number().describe("0-100: Does the education meet the requirements"),
+        atsReadability: z.number().describe("0-100: How well is the resume structured and readable"),
+        evidenceStrength: z.number().describe("0-100: How strong and clear is the evidence provided for their skills")
+    }).describe("Raw sub-scores evaluated by the AI based on qualitative factors"),
+    
+    interviewQuestions: z.array(z.object({
+        question: z.string().describe("The specific interview question"),
+        category: z.string().describe("E.g., PROJECT, TECHNICAL, JOB-SPECIFIC, AI/ML CONCEPT, SYSTEM DESIGN, SKILL GAP"),
+        difficulty: z.string().describe("Introductory, Intermediate, Deep-dive, or Advanced"),
+        reason: z.string().describe("Why this question is being asked based on the resume/JD"),
+        relatedSkill: z.string().describe("The core skill being tested"),
+        source: z.string().describe("Where this question was derived from (e.g., specific project or missing JD requirement)")
+    })).describe("Highly specific, structured interview questions"),
+    
     skillAnalysis: z.object({
         strongMatches: z.array(z.object({
-            skill: z.string().describe("The skill from the JD"),
-            evidence: z.string().describe("Evidence from the resume supporting this match (e.g. project usage, explicit mention)")
-        })).describe("Skills from the JD that are explicitly or very strongly matched in the resume (exact match or clear alias)"),
+            skill: z.string().describe("The explicitly matched skill"),
+            category: z.string().describe("Category, e.g. REQUIRED_TECHNOLOGIES, AI_ML_CONCEPTS, etc."),
+            status: z.string().describe("DIRECT_MATCH"),
+            confidence: z.number().describe("Confidence score 80-100"),
+            evidence: z.array(z.string()).describe("Specific sentences/claims extracted from the resume acting as evidence"),
+            sources: z.array(z.string()).describe("e.g. ['Experience', 'Projects']")
+        })).describe("Strong matches with clear evidence"),
+        
         partialMatches: z.array(z.object({
-            skill: z.string().describe("The skill from the JD"),
-            evidence: z.string().describe("Evidence from the resume explaining why this is a partial/related match")
-        })).describe("Skills from the JD that are not exactly present, but the candidate has related experience, adjacent tech, or partial conceptual knowledge"),
+            skill: z.string().describe("The JD skill that is partially matched"),
+            status: z.string().describe("RELATED_MATCH or PARTIAL_MATCH"),
+            confidence: z.number().describe("Confidence score 30-79"),
+            evidence: z.array(z.string()).describe("Evidence of related experience (e.g. used Groq instead of Agentic AI)"),
+            remainingGap: z.string().describe("What exactly is still missing to make this a full match")
+        })).describe("Partial matches where candidate knows adjacent technologies"),
+        
         missingSkills: z.array(z.object({
-            skill: z.string().describe("The skill from the JD that is completely missing")
-        })).describe("Skills from the JD that have absolutely no meaningful evidence or related experience in the resume")
-    }).describe("Multi-level evidence-based skill matching analysis against the job description"),
-    preparationPlan: z.array(z.object({
-        day: z.number().describe("The day number in the preparation plan, starting from 1"),
-        focus: z.string().describe("The main focus of this day in the preparation plan, e.g. data structures, system design, mock interviews etc."),
-        tasks: z.array(z.string()).describe("List of tasks to be done on this day to follow the preparation plan, e.g. read a specific book or article, solve a set of problems, watch a video etc.")
-    })).describe("A day-wise preparation plan for the candidate to follow in order to prepare for the interview effectively"),
-    title: z.string().describe("The title of the job for which the interview report is generated"),
+            skill: z.string().describe("The skill completely missing from the resume"),
+            priority: z.enum(["HIGH", "MEDIUM", "LOW"]).describe("Priority based on how critical it is for the role"),
+            type: z.string().describe("REQUIRED_NOT_EVIDENCED, PREFERRED_NOT_EVIDENCED, or ADVANCED_OPTIONAL")
+        })).describe("Missing skills categorized by priority")
+    }).describe("Multi-level evidence-based skill matching analysis"),
+    
+    preparationRoadmap: z.array(z.object({
+        roundNumber: z.number().describe("Round number (1 to 5)"),
+        focus: z.string().describe("The main focus (e.g., 'RESUME & FUNDAMENTALS', 'PROJECT DEEP DIVE')"),
+        assignedTopic: z.string().describe("Specific topic to prepare"),
+        tasks: z.array(z.string()).describe("Specific preparation tasks")
+    })).describe("Personalized 5-round preparation roadmap"),
+    
+    title: z.string().describe("The title of the job"),
+    
     resumeProfile: z.object({
-        skills: z.array(z.string()).describe("List of core skills extracted from the resume"),
-        projects: z.array(z.string()).describe("List of projects extracted from the resume"),
-        experience: z.array(z.string()).describe("List of professional experiences extracted"),
-        education: z.array(z.string()).describe("List of educational qualifications extracted"),
-        certifications: z.array(z.string()).describe("List of certifications extracted"),
-        technologies: z.array(z.string()).describe("List of all specific technologies/tools mentioned"),
-        proficiency: z.string().describe("Estimated overall proficiency level based on resume")
-    }).describe("A normalized and structured profile extracted from the raw resume text"),
-    roadmap: z.array(z.object({
-        roundNumber: z.number().describe("The round number (1 to 5)"),
-        assignedTopic: z.string().describe("The specific resume topic to focus on (e.g., 'Project: E-Commerce Backend' or 'Skill: React')"),
-        topicType: z.enum(['skill', 'project', 'experience', 'education', 'certification', 'technology', 'general']).describe("The type of the topic"),
-        difficultyTarget: z.enum(['Introductory', 'Intermediate', 'Deep-dive', 'Advanced']).describe("The target difficulty for this round")
-    })).describe("A 5-round interview roadmap assigning a specific resume topic and difficulty to each round")
-})
+        skills: z.array(z.string()),
+        projects: z.array(z.string()),
+        experience: z.array(z.string()),
+        education: z.array(z.string()),
+        certifications: z.array(z.string()),
+        technologies: z.array(z.string()),
+        proficiency: z.string()
+    }).describe("A structured profile extracted from the raw resume text")
+});
 
 async function generateInterviewReport({ resume, selfDescription, jobDescription }) {
 
-
-    const prompt = `Generate an interview report for a candidate with the following details:
+    const prompt = `Generate a highly credible "AI-Powered Resume & Interview Intelligence System" report.
                         Resume: ${resume}
                         Self Description: ${selfDescription}
                         Job Description: ${jobDescription}
 
                         CRITICAL INSTRUCTIONS:
-                        1. Limit the preparationPlan to EXACTLY 5 days to keep the response concise.
-                        2. Provide exactly 3 technical questions and 3 behavioral questions. 
-                           - Generate questions that test the candidate's actual claimed knowledge based on their resume.
-                           - When testing a missing/partial skill, DO NOT falsely assume they possess it (e.g., ask how they would extend their existing project to use this missing skill).
-                        3. Keep all answers and descriptions brief and straight to the point.
-                        4. Extract a highly accurate "resumeProfile" encompassing all skills, projects, and technologies.
-                        5. Generate a 5-round "roadmap" for the upcoming mock interview. Map Round 1 to Introductory, Round 2 to Intermediate (e.g., a specific Project), Round 3 to Deep-dive (e.g., a specific Skill), Round 4 to Deep-dive/Architecture (e.g., Experience), and Round 5 to Advanced.
-                           - Ensure the roadmap prioritizes critical missing skills and partial matches.
-                        6. SKILL ANALYSIS INSTRUCTIONS: You MUST perform a rigorous 3-level skill analysis in the "skillAnalysis" object comparing the JD against the Resume.
-                           - LEVEL 1 (Strong Match): Exact strings, standard aliases (e.g., "Google Gemini" -> "Gemini API"), or clearly equivalent technology. MUST include evidence.
-                           - LEVEL 2 (Partial/Related Match): Semantic relevance, adjacent technologies (e.g. JD needs "Agentic AI", candidate has "autonomous pair-programmer"). DO NOT overclaim (e.g., "Whisper" is partial evidence for "Speech-to-Text" but DOES NOT mean the candidate knows "Text-to-Speech"). MUST include evidence.
-                           - LEVEL 3 (Missing): No meaningful evidence in resume. Do not hallucinate matches.
-                        7. ATS SCORE (matchScore): Compute a realistic ATS score (0-100). If critical skills are missing or there are 0 strong matches, the score should NOT be artificially high (e.g. do not give 88% if 0 matches). Weight Strong and Partial matches appropriately.
-                        8. Ensure every roadmap topic explicitly references an item from the "resumeProfile" or addresses a specific gap from "skillAnalysis".
+                        1. JOB DESCRIPTION CLASSIFICATION: Do not treat every word as a generic skill. Classify requirements into JOB_ROLE, REQUIRED_TECHNOLOGIES, AI_ML_CONCEPTS, AI_SYSTEMS, FRAMEWORKS_AND_TOOLS, RESPONSIBILITIES, PREFERRED_SKILLS, EDUCATION/EXPERIENCE.
+                        2. RESUME EXTRACTION: Extract skills and find strict EVIDENCE across Technical Skills, Projects, Experience, Certifications, etc. Do not rely only on the 'Skills' section.
+                        3. SEMANTIC MATCHING (skillAnalysis): 
+                           - strongMatches: DIRECT_MATCH with high confidence (80-100%). Must have explicit evidence.
+                           - partialMatches: RELATED_MATCH / PARTIAL_MATCH (30-79%). Explicitly state what is demonstrated and the 'remainingGap'.
+                           - missingSkills: Not evidenced. Do not say "Candidate does not know X". Categorize priority as HIGH, MEDIUM, or LOW based on role criticality.
+                           NEVER hallucinate evidence. If it's not in the text, it's missing.
+                        4. INTERVIEW QUESTIONS (interviewQuestions): Provide 6 structured questions. Generate questions from Resume Projects, Technical Skills, Strong Matches, Partial Matches, and Skill Gaps. Do not ask generic textbook questions. 
+                           Example format: Question: "Explain how you integrated Gemini into your project...", Category: "PROJECT", Difficulty: "Intermediate", Reason: "Project is directly mentioned..."
+                        5. INTERVIEW ROADMAP (preparationRoadmap): Generate EXACTLY 5 rounds:
+                           ROUND 1 - RESUME & FUNDAMENTALS
+                           ROUND 2 - PROJECT DEEP DIVE
+                           ROUND 3 - JOB-SPECIFIC TECHNICAL
+                           ROUND 4 - SKILL GAP ASSESSMENT
+                           ROUND 5 - ADVANCED / OPTIONAL
+                           Personalize this based on the specific resume and JD gaps. Do NOT force unknown frameworks unless the JD requires them (and then make it a skill gap focus).
+                        6. RAW SCORES: Evaluate the qualitative aspects of the resume (projectRelevance, experience, education, atsReadability, evidenceStrength) on a scale of 0 to 100. Be realistic, do not inflate scores.
 `
 
     console.log("Calling Gemini with prompt length:", prompt.length);
@@ -93,17 +105,88 @@ async function generateInterviewReport({ resume, selfDescription, jobDescription
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
-                responseSchema: zodToJsonSchema(interviewReportSchema),
+                responseSchema: zodToJsonSchema(intelligenceReportSchema),
             }
         });
         console.log("Gemini responded successfully");
-        return JSON.parse(response.text);
+        const aiData = JSON.parse(response.text);
+
+        // DETERMINISTIC ATS SCORE CALCULATION
+        // Required Skills Match = 30%
+        // Technical/AI Skills Match = 20%
+        // Project Relevance = 15% (from LLM)
+        // Experience Match = 10% (from LLM)
+        // Keyword Coverage = 10%
+        // Education Match = 5% (from LLM)
+        // Resume Structure / ATS Readability = 5% (from LLM)
+        // Evidence Strength = 5% (from LLM)
+
+        const totalRequired = aiData.skillAnalysis.strongMatches.length + aiData.skillAnalysis.partialMatches.length + aiData.skillAnalysis.missingSkills.length;
+        
+        let requiredMatchScore = 0;
+        let technicalMatchScore = 0;
+        let keywordCoverageScore = 0;
+
+        if (totalRequired > 0) {
+            // Calculate a weighted coverage based on confidence
+            const totalConfidence = [
+                ...aiData.skillAnalysis.strongMatches,
+                ...aiData.skillAnalysis.partialMatches
+            ].reduce((sum, match) => sum + (match.confidence || 0), 0);
+
+            // Required skills match is an average of confidence over all required skills
+            requiredMatchScore = Math.min(100, (totalConfidence / totalRequired));
+            
+            // Technical skills match assumes strong matches carry more weight
+            const strongCount = aiData.skillAnalysis.strongMatches.length;
+            technicalMatchScore = Math.min(100, ((strongCount * 100) + (aiData.skillAnalysis.partialMatches.length * 50)) / totalRequired);
+            
+            // Keyword coverage is just the raw presence
+            keywordCoverageScore = Math.min(100, ((strongCount + (aiData.skillAnalysis.partialMatches.length * 0.5)) / totalRequired) * 100);
+        }
+
+        const scoreBreakdown = {
+            requiredSkills: Math.round(requiredMatchScore),
+            technicalSkills: Math.round(technicalMatchScore),
+            projectRelevance: Math.round(aiData.rawScores.projectRelevance || 0),
+            experience: Math.round(aiData.rawScores.experience || 0),
+            keywordCoverage: Math.round(keywordCoverageScore),
+            education: Math.round(aiData.rawScores.education || 0),
+            atsReadability: Math.round(aiData.rawScores.atsReadability || 0),
+            evidenceStrength: Math.round(aiData.rawScores.evidenceStrength || 0)
+        };
+
+        const overallScore = Math.round(
+            (scoreBreakdown.requiredSkills * 0.30) +
+            (scoreBreakdown.technicalSkills * 0.20) +
+            (scoreBreakdown.projectRelevance * 0.15) +
+            (scoreBreakdown.experience * 0.10) +
+            (scoreBreakdown.keywordCoverage * 0.10) +
+            (scoreBreakdown.education * 0.05) +
+            (scoreBreakdown.atsReadability * 0.05) +
+            (scoreBreakdown.evidenceStrength * 0.05)
+        );
+
+        // Format to match the expected return structure of the application
+        return {
+            title: aiData.title,
+            matchScore: overallScore,
+            scoreBreakdown,
+            skillAnalysis: aiData.skillAnalysis,
+            interviewQuestions: aiData.interviewQuestions,
+            preparationPlan: aiData.preparationRoadmap, // map to existing key for backward compatibility
+            resumeProfile: aiData.resumeProfile,
+            // Fallback old arrays to empty so frontend doesn't crash if it looks for them
+            technicalQuestions: [],
+            behavioralQuestions: [],
+            skillGaps: [],
+            matchedSkills: [],
+            roadmap: []
+        };
     } catch (e) {
         console.error("Gemini call failed:", e);
         throw e;
     }
-
-
 }
 
 

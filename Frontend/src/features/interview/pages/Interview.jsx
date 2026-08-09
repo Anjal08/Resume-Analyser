@@ -55,8 +55,12 @@ const Interview = () => {
     const missingSkills = report.skillAnalysis?.missingSkills || (report.skillGaps ? report.skillGaps.filter(g => g.severity === 'high' || g.severity === 'medium') : []);
     
     // Fallback parsing if backend roadmap/profile wasn't generated
-    const roadmap = report.roadmap || report.preparationPlan || [];
+    const roadmap = report.preparationPlan || report.roadmap || [];
     const resumeProfile = report.resumeProfile || {};
+    
+    // Fallback questions array
+    const questions = report.interviewQuestions?.length > 0 ? report.interviewQuestions : 
+                     (report.technicalQuestions || []).concat(report.behavioralQuestions || []);
 
     const handleStartInterview = () => navigate(`/mock-interview/${interviewId}`)
     const handleDownloadPdf = () => getResumePdf(interviewId, 'Classic ATS', '')
@@ -94,7 +98,7 @@ const Interview = () => {
             {/* 2. Quick Stats */}
             <motion.section className="quick-stats-grid" variants={itemVariants}>
                 <div className="stat-card">
-                    <p className="stat-label">ATS Score</p>
+                    <p className="stat-label">ATS Compatibility</p>
                     <h3 className={`stat-value ${report.matchScore > 75 ? 'text-success' : 'text-warning'}`}>
                         {report.matchScore}%
                     </h3>
@@ -116,10 +120,51 @@ const Interview = () => {
                 <div className="stat-card">
                     <p className="stat-label">Questions Generated</p>
                     <h3 className="stat-value">
-                        {(report.technicalQuestions?.length || 0) + (report.behavioralQuestions?.length || 0)}
+                        {questions.length}
                     </h3>
                 </div>
             </motion.section>
+
+            {/* ATS Score Breakdown */}
+            {report.scoreBreakdown && (
+                <motion.section className="content-section" variants={itemVariants}>
+                    <h2 className="section-title"><Target size={20}/> ATS Compatibility Breakdown</h2>
+                    <div className="card large-card breakdown-grid">
+                        <div className="breakdown-item">
+                            <span className="breakdown-label">Required Skills ({report.scoreBreakdown.requiredSkills}%)</span>
+                            <div className="progress-bar"><div className="progress-fill" style={{ width: `${report.scoreBreakdown.requiredSkills}%` }}></div></div>
+                        </div>
+                        <div className="breakdown-item">
+                            <span className="breakdown-label">Technical Skills ({report.scoreBreakdown.technicalSkills}%)</span>
+                            <div className="progress-bar"><div className="progress-fill" style={{ width: `${report.scoreBreakdown.technicalSkills}%` }}></div></div>
+                        </div>
+                        <div className="breakdown-item">
+                            <span className="breakdown-label">Project Relevance ({report.scoreBreakdown.projectRelevance}%)</span>
+                            <div className="progress-bar"><div className="progress-fill" style={{ width: `${report.scoreBreakdown.projectRelevance}%` }}></div></div>
+                        </div>
+                        <div className="breakdown-item">
+                            <span className="breakdown-label">Experience ({report.scoreBreakdown.experience}%)</span>
+                            <div className="progress-bar"><div className="progress-fill" style={{ width: `${report.scoreBreakdown.experience}%` }}></div></div>
+                        </div>
+                        <div className="breakdown-item">
+                            <span className="breakdown-label">Keyword Coverage ({report.scoreBreakdown.keywordCoverage}%)</span>
+                            <div className="progress-bar"><div className="progress-fill" style={{ width: `${report.scoreBreakdown.keywordCoverage}%` }}></div></div>
+                        </div>
+                        <div className="breakdown-item">
+                            <span className="breakdown-label">Education ({report.scoreBreakdown.education}%)</span>
+                            <div className="progress-bar"><div className="progress-fill" style={{ width: `${report.scoreBreakdown.education}%` }}></div></div>
+                        </div>
+                        <div className="breakdown-item">
+                            <span className="breakdown-label">ATS Readability ({report.scoreBreakdown.atsReadability}%)</span>
+                            <div className="progress-bar"><div className="progress-fill" style={{ width: `${report.scoreBreakdown.atsReadability}%` }}></div></div>
+                        </div>
+                        <div className="breakdown-item">
+                            <span className="breakdown-label">Evidence Strength ({report.scoreBreakdown.evidenceStrength}%)</span>
+                            <div className="progress-bar"><div className="progress-fill" style={{ width: `${report.scoreBreakdown.evidenceStrength}%` }}></div></div>
+                        </div>
+                    </div>
+                </motion.section>
+            )}
 
             {/* 3. Skill Match Analysis */}
             <motion.section className="content-section" variants={itemVariants}>
@@ -131,8 +176,19 @@ const Interview = () => {
                         <div className="chip-container detailed-chips">
                             {strongMatches.length > 0 ? strongMatches.map((match, i) => (
                                 <div key={i} className="detailed-chip">
-                                    <span className="chip chip-success">{match.skill}</span>
-                                    {match.evidence && <p className="evidence-text">Evidence: {match.evidence}</p>}
+                                    <div className="chip-header">
+                                        <span className="chip chip-success">{match.skill}</span>
+                                        {match.confidence && <span className="confidence-badge">Confidence: {match.confidence}%</span>}
+                                        {match.category && <span className="category-badge">{match.category}</span>}
+                                    </div>
+                                    {match.evidence && (
+                                        <div className="evidence-box">
+                                            {Array.isArray(match.evidence) 
+                                                ? match.evidence.map((ev, j) => <p key={j} className="evidence-text">• {ev}</p>) 
+                                                : <p className="evidence-text">• {match.evidence}</p>}
+                                        </div>
+                                    )}
+                                    {match.sources && match.sources.length > 0 && <p className="source-text">Source: {match.sources.join(' + ')}</p>}
                                 </div>
                             )) : <p className="empty-text">No strong matches found.</p>}
                         </div>
@@ -143,19 +199,33 @@ const Interview = () => {
                         <div className="chip-container detailed-chips">
                             {partialMatches.length > 0 ? partialMatches.map((match, i) => (
                                 <div key={i} className="detailed-chip">
-                                    <span className="chip chip-warning" style={{ background: 'rgba(234, 179, 8, 0.15)', color: '#eab308' }}>{match.skill}</span>
-                                    {match.evidence && <p className="evidence-text">Evidence: {match.evidence}</p>}
+                                    <div className="chip-header">
+                                        <span className="chip chip-warning">{match.skill}</span>
+                                        {match.confidence && <span className="confidence-badge">Confidence: {match.confidence}%</span>}
+                                    </div>
+                                    {match.evidence && (
+                                        <div className="evidence-box">
+                                            {Array.isArray(match.evidence) 
+                                                ? match.evidence.map((ev, j) => <p key={j} className="evidence-text">• {ev}</p>) 
+                                                : <p className="evidence-text">• {match.evidence}</p>}
+                                        </div>
+                                    )}
+                                    {match.remainingGap && <p className="gap-text">Remaining Gap: {match.remainingGap}</p>}
                                 </div>
                             )) : <p className="empty-text">No partial matches found.</p>}
                         </div>
                     </div>
 
                     <div className="skill-group" style={{ marginTop: '1.5rem' }}>
-                        <h4 className="group-title text-danger">🔴 Missing Skills</h4>
+                        <h4 className="group-title text-danger">🔴 Missing / Not Evidenced</h4>
                         <div className="chip-container detailed-chips">
                             {missingSkills.length > 0 ? missingSkills.map((match, i) => (
                                 <div key={i} className="detailed-chip">
-                                    <span className="chip chip-danger">{match.skill}</span>
+                                    <div className="chip-header">
+                                        <span className="chip chip-danger">{match.skill}</span>
+                                        {match.priority && <span className={`priority-badge priority-${match.priority.toLowerCase()}`}>{match.priority} PRIORITY</span>}
+                                    </div>
+                                    <p className="missing-text">⚠️ Not explicitly evidenced in the resume.</p>
                                 </div>
                             )) : <p className="empty-text">No critical skills missing.</p>}
                         </div>
@@ -173,8 +243,8 @@ const Interview = () => {
                             <div className="timeline-marker"></div>
                             <div className="timeline-content">
                                 <div className="timeline-header">
-                                    <h4>{step.roundNumber ? `Round ${step.roundNumber}` : `Day ${step.day}`}</h4>
-                                    <span className="badge">{step.difficultyTarget || step.focus || 'Focus'}</span>
+                                    <h4>Round {step.roundNumber || step.day}</h4>
+                                    <span className="badge">{step.focus || step.difficultyTarget || 'Focus'}</span>
                                 </div>
                                 <p className="timeline-topic">{step.assignedTopic || (step.tasks && step.tasks.join(', ')) || 'General Review'}</p>
                             </div>
@@ -187,22 +257,16 @@ const Interview = () => {
             <motion.section className="content-section" variants={itemVariants}>
                 <h2 className="section-title"><FileText size={20}/> Mock Interview Preview</h2>
                 <div className="preview-grid">
-                    {report.technicalQuestions?.slice(0, 3).map((q, i) => (
+                    {questions.slice(0, 6).map((q, i) => (
                         <div key={i} className="card question-card">
                             <div className="q-header">
-                                <span className="q-badge">Technical</span>
+                                <span className={`q-badge ${q.category?.toLowerCase() || ''}`}>{q.category || (q.intention ? 'Technical' : 'Question')}</span>
+                                {q.difficulty && <span className="q-badge-difficulty">{q.difficulty}</span>}
                             </div>
                             <p className="q-text">{q.question}</p>
-                            <p className="q-intention"><strong>Focus:</strong> {q.intention}</p>
-                        </div>
-                    ))}
-                    {report.behavioralQuestions?.slice(0, 2).map((q, i) => (
-                        <div key={i} className="card question-card">
-                            <div className="q-header">
-                                <span className="q-badge behavioral">Behavioral</span>
-                            </div>
-                            <p className="q-text">{q.question}</p>
-                            <p className="q-intention"><strong>Focus:</strong> {q.intention}</p>
+                            {q.reason && <p className="q-intention"><strong>Reason:</strong> {q.reason}</p>}
+                            {q.relatedSkill && <p className="q-intention"><strong>Tests:</strong> {q.relatedSkill}</p>}
+                            {q.intention && !q.reason && <p className="q-intention"><strong>Focus:</strong> {q.intention}</p>}
                         </div>
                     ))}
                 </div>
