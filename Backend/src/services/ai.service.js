@@ -67,6 +67,7 @@ const intelligenceReportSchema = z.object({
         education: z.array(z.string()),
         certifications: z.array(z.string()),
         technologies: z.array(z.string()),
+        summary: z.string().describe("A concise 2-3 line summary of the candidate's profile."),
         proficiency: z.string()
     }).describe("A structured profile extracted from the raw resume text")
 });
@@ -79,23 +80,22 @@ async function generateInterviewReport({ resume, selfDescription, jobDescription
                         Job Description: ${jobDescription}
 
                         CRITICAL INSTRUCTIONS:
-                        1. JOB DESCRIPTION CLASSIFICATION: Do not treat every word as a generic skill. Classify requirements into JOB_ROLE, REQUIRED_TECHNOLOGIES, AI_ML_CONCEPTS, AI_SYSTEMS, FRAMEWORKS_AND_TOOLS, RESPONSIBILITIES, PREFERRED_SKILLS, EDUCATION/EXPERIENCE.
-                        2. RESUME EXTRACTION: Extract skills and find strict EVIDENCE across Technical Skills, Projects, Experience, Certifications, etc. Do not rely only on the 'Skills' section.
-                        3. SEMANTIC MATCHING (skillAnalysis): 
-                           - strongMatches: DIRECT_MATCH with high confidence (80-100%). Must have explicit evidence.
-                           - partialMatches: RELATED_MATCH / PARTIAL_MATCH (30-79%). Explicitly state what is demonstrated and the 'remainingGap'.
-                           - missingSkills: Not evidenced. Do not say "Candidate does not know X". Categorize priority as HIGH, MEDIUM, or LOW based on role criticality.
-                           NEVER hallucinate evidence. If it's not in the text, it's missing.
-                        4. INTERVIEW QUESTIONS (interviewQuestions): Provide 6 structured questions. Generate questions from Resume Projects, Technical Skills, Strong Matches, Partial Matches, and Skill Gaps. Do not ask generic textbook questions. 
-                           Example format: Question: "Explain how you integrated Gemini into your project...", Category: "PROJECT", Difficulty: "Intermediate", Reason: "Project is directly mentioned..."
-                        5. INTERVIEW ROADMAP (preparationRoadmap): Generate EXACTLY 5 rounds:
-                           ROUND 1 - RESUME & FUNDAMENTALS
-                           ROUND 2 - PROJECT DEEP DIVE
-                           ROUND 3 - JOB-SPECIFIC TECHNICAL
-                           ROUND 4 - SKILL GAP ASSESSMENT
-                           ROUND 5 - ADVANCED / OPTIONAL
-                           Personalize this based on the specific resume and JD gaps. Do NOT force unknown frameworks unless the JD requires them (and then make it a skill gap focus).
-                        6. RAW SCORES: Evaluate the qualitative aspects of the resume (projectRelevance, experience, education, atsReadability, evidenceStrength) on a scale of 0 to 100. Be realistic, do not inflate scores.
+                        1. JOB DESCRIPTION CLASSIFICATION: Use meaningful categories. Examples: "LLM usage patterns" -> LLM_APPLICATIONS, "API integrations" -> AI_INTEGRATION, "Machine Learning" / "NLP" -> AI_ML_CONCEPTS, "Python" -> PROGRAMMING_LANGUAGE, "React" -> WEB_TECHNOLOGY, "Whisper" -> SPEECH_AI, "Agentic AI" / "Chatbots" -> AI_SYSTEMS, "LangChain" -> AI_FRAMEWORKS.
+                        2. MERGE DUPLICATES: Merge related concepts into single missing skills (e.g., "Embeddings and vector search" and "Vector databases" must be merged into one gap: "Vector Search / Vector Databases").
+                        3. WHISPER & VOICEBOTS: Whisper is "SPEECH_AI". Do NOT claim complete voicebot development from Whisper alone. Voicebots require STT + LLM + TTS. If only STT exists, Voicebot is a PARTIAL_MATCH (Reason: "Demonstrates STT but not a complete voicebot workflow").
+                        4. AGENTIC AI: If candidate has autonomous AI pair-programmer but no formal framework (LangChain/CrewAI), classify Agentic AI as PARTIAL_MATCH. Remaining gap: "No explicit evidence of a dedicated agent framework." Do NOT claim LangChain/CrewAI knowledge from absence.
+                        5. SEMANTIC MATCHING & CONFIDENCE: Do not default confidence to 95%. Derive from evidence:
+                           - DIRECT skill + project evidence + experience -> 95-100%
+                           - DIRECT skill + project evidence -> 85-94%
+                           - Technical skills section only -> 70-84%
+                           - Related concept only -> 50-69%
+                           - Weak semantic relationship -> 30-49%
+                           - No evidence -> 0%
+                        6. MISSING SKILLS LANGUAGE: If missing, say "Not explicitly evidenced in the resume." NEVER say "Candidate does not know X." Categorize priority as HIGH, MEDIUM, or LOW based on job relevance.
+                        7. SUMMARY: Create a concise 2-3 line candidate summary in "resumeProfile.summary" (e.g. "AI-focused software developer with hands-on experience in Machine Learning...").
+                        8. INTERVIEW QUESTIONS: Provide 6 structured questions.
+                        9. INTERVIEW ROADMAP: Generate exactly 5 rounds: ROUND 1 - RESUME & FUNDAMENTALS, ROUND 2 - PROJECT DEEP DIVE, ROUND 3 - JOB-SPECIFIC TECHNICAL, ROUND 4 - SKILL GAP ASSESSMENT, ROUND 5 - ADVANCED / OPTIONAL.
+                        10. RAW SCORES: Evaluate qualitative aspects (projectRelevance, experience, education, atsReadability, evidenceStrength) from 0 to 100.
 `
 
     console.log("Calling Gemini with prompt length:", prompt.length);

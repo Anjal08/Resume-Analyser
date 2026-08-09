@@ -126,6 +126,12 @@
             box-shadow: var(--shadow-md);
         }
 
+        &.profile-stat-card {
+            @media (min-width: 768px) {
+                grid-column: span 2;
+            }
+        }
+
         .stat-label {
             margin: 0;
             font-size: 0.85rem;
@@ -145,6 +151,19 @@
             &.text-warning { color: var(--warning); }
             &.text-danger { color: var(--danger); }
             &.text-primary { color: var(--accent-blue); }
+            
+            &.summary-text {
+                font-size: 0.9rem;
+                font-weight: 400;
+                line-height: 1.4;
+                letter-spacing: normal;
+                color: var(--text-secondary);
+                display: -webkit-box;
+                -webkit-line-clamp: 3;
+                -webkit-box-orient: vertical;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
         }
     }
 }

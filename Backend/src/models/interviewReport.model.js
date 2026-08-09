@@ -76,6 +76,7 @@ const resumeProfileSchema = new mongoose.Schema({
     education: [String],
     certifications: [String],
     technologies: [String],
+    summary: { type: String },
     proficiency: { type: String }
 }, { _id: false });
 

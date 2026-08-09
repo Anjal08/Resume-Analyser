@@ -54,6 +54,9 @@ const Interview = () => {
     
     const missingSkills = report.skillAnalysis?.missingSkills || (report.skillGaps ? report.skillGaps.filter(g => g.severity === 'high' || g.severity === 'medium') : []);
     
+    const requiredMissing = missingSkills.filter(m => m.type !== 'PREFERRED_NOT_EVIDENCED' && m.type !== 'ADVANCED_OPTIONAL');
+    const preferredMissing = missingSkills.filter(m => m.type === 'PREFERRED_NOT_EVIDENCED' || m.type === 'ADVANCED_OPTIONAL');
+
     // Fallback parsing if backend roadmap/profile wasn't generated
     const roadmap = report.preparationPlan || report.roadmap || [];
     const resumeProfile = report.resumeProfile || {};
@@ -103,15 +106,15 @@ const Interview = () => {
                         {report.matchScore}%
                     </h3>
                 </div>
-                <div className="stat-card">
-                    <p className="stat-label">Resume Score</p>
-                    <h3 className="stat-value text-primary">
-                        {resumeProfile.proficiency || 'Intermediate'}
-                    </h3>
+                <div className="stat-card profile-stat-card">
+                    <p className="stat-label">Candidate Profile</p>
+                    <p className="stat-value summary-text">
+                        {resumeProfile.summary || resumeProfile.proficiency || 'Intermediate candidate'}
+                    </p>
                 </div>
                 <div className="stat-card">
                     <p className="stat-label">Missing Skills</p>
-                    <h3 className="stat-value text-danger">{missingSkills.length}</h3>
+                    <h3 className="stat-value text-danger">{requiredMissing.length}</h3>
                 </div>
                 <div className="stat-card">
                     <p className="stat-label">Matched Skills</p>
@@ -217,9 +220,9 @@ const Interview = () => {
                     </div>
 
                     <div className="skill-group" style={{ marginTop: '1.5rem' }}>
-                        <h4 className="group-title text-danger">🔴 Missing / Not Evidenced</h4>
+                        <h4 className="group-title text-danger">🔴 Required & Not Evidenced</h4>
                         <div className="chip-container detailed-chips">
-                            {missingSkills.length > 0 ? missingSkills.map((match, i) => (
+                            {requiredMissing.length > 0 ? requiredMissing.map((match, i) => (
                                 <div key={i} className="detailed-chip">
                                     <div className="chip-header">
                                         <span className="chip chip-danger">{match.skill}</span>
@@ -228,6 +231,21 @@ const Interview = () => {
                                     <p className="missing-text">⚠️ Not explicitly evidenced in the resume.</p>
                                 </div>
                             )) : <p className="empty-text">No critical skills missing.</p>}
+                        </div>
+                    </div>
+
+                    <div className="skill-group" style={{ marginTop: '1.5rem' }}>
+                        <h4 className="group-title text-secondary" style={{color: 'var(--text-secondary)'}}>⚪ Preferred / Advanced</h4>
+                        <div className="chip-container detailed-chips">
+                            {preferredMissing.length > 0 ? preferredMissing.map((match, i) => (
+                                <div key={i} className="detailed-chip">
+                                    <div className="chip-header">
+                                        <span className="chip" style={{backgroundColor: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)'}}>{match.skill}</span>
+                                        {match.priority && <span className={`priority-badge priority-${match.priority.toLowerCase()}`}>{match.priority} PRIORITY</span>}
+                                    </div>
+                                    <p className="missing-text">Optional/preferred skill not explicitly evidenced.</p>
+                                </div>
+                            )) : <p className="empty-text">No preferred skills requested.</p>}
                         </div>
                     </div>
 
