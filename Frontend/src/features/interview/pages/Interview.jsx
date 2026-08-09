@@ -35,6 +35,7 @@ const Interview = () => {
     const [expandedMatches, setExpandedMatches] = useState({});
     const [showAllStrong, setShowAllStrong] = useState(false);
     const [showAllPartial, setShowAllPartial] = useState(false);
+    const [showAllRequired, setShowAllRequired] = useState(false);
 
     const toggleMatch = (id) => {
         setExpandedMatches(prev => ({ ...prev, [id]: !prev[id] }));
@@ -68,6 +69,7 @@ const Interview = () => {
 
     const visibleStrong = showAllStrong ? strongMatches : strongMatches.slice(0, 4);
     const visiblePartial = showAllPartial ? partialMatches : partialMatches.slice(0, 3);
+    const visibleRequired = showAllRequired ? requiredMissing : requiredMissing.slice(0, 3);
 
     // Fallback parsing if backend roadmap/profile wasn't generated
     const roadmap = report.preparationPlan || report.roadmap || [];
@@ -278,7 +280,7 @@ const Interview = () => {
                     <div className="skill-group" style={{ marginTop: '1.5rem' }}>
                         <h4 className="group-title text-danger">🔴 Required & Not Evidenced</h4>
                         <div className="matches-list">
-                            {requiredMissing.length > 0 ? requiredMissing.map((match, i) => {
+                            {visibleRequired.length > 0 ? visibleRequired.map((match, i) => {
                                 const isExpanded = expandedMatches[`required-${i}`];
                                 return (
                                     <div key={i} className="match-row">
@@ -303,6 +305,11 @@ const Interview = () => {
                                 );
                             }) : <p className="empty-text">No critical skills missing.</p>}
                         </div>
+                        {requiredMissing.length > 3 && (
+                            <button className="show-more-btn" onClick={() => setShowAllRequired(!showAllRequired)}>
+                                {showAllRequired ? 'Show Less' : `Show All (${requiredMissing.length})`}
+                            </button>
+                        )}
                     </div>
 
                     <div className="skill-group" style={{ marginTop: '1.5rem' }}>
