@@ -90,7 +90,7 @@ and uses those insights to create a personalized mock interview.
 | **Frontend** | React 19, Vite, React Router v7, Sass (SCSS), Framer Motion, Axios |
 | **Backend** | Node.js, Express.js, Multer (multipart file upload), pdf-parse |
 | **Database** | MongoDB, Mongoose ODM |
-| **AI & PDF** | Google Gemini (`gemini-3-flash-preview`), Puppeteer (headless browser PDF generation) |
+| **AI & PDF** | Google Gemini (`gemini-2.5-flash`), Puppeteer (headless browser PDF generation) |
 
 ---
 
@@ -134,8 +134,8 @@ graph TD
 ├── Frontend/              # React frontend
 │   ├── src/
 │   │   ├── components/    # Reusable components (Sidebar, Header, Layouts)
-│   │   ├── features/      # Feature-based folder structure (Auth, Interview)
-│   │   ├── hooks/         # Custom React hooks (useAuth, useInterview)
+│   │   ├── context/       # Global React context (ThemeContext)
+│   │   ├── features/      # Feature modules (Auth, Interview) containing hooks, pages & components
 │   │   ├── pages/         # Primary application pages (Settings, Reports, History)
 │   │   ├── style/         # Global SCSS files
 │   │   └── main.jsx       # App entry and routing config
