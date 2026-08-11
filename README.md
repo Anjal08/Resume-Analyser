@@ -3,6 +3,13 @@
 > An AI-powered career assistant that analyzes resumes against job descriptions,
 > identifies skill gaps, generates personalized preparation strategies,
 > and conducts role-specific mock interviews.
+[![React](https://img.shields.io/badge/Frontend-React%2019-blue?style=for-the-badge&logo=react)](https://react.dev/)
+[![Express](https://img.shields.io/badge/Backend-Express.js-green?style=for-the-badge&logo=express)](https://expressjs.com/)
+[![MongoDB](https://img.shields.io/badge/Database-MongoDB-darkgreen?style=for-the-badge&logo=mongodb)](https://www.mongodb.com/)
+[![Gemini AI](https://img.shields.io/badge/AI-Google%20Gemini-orange?style=for-the-badge&logo=google-gemini)](https://deepmind.google/technologies/gemini/)
+[![Puppeteer](https://img.shields.io/badge/PDF-Puppeteer-red?style=for-the-badge&logo=puppeteer)](https://pptr.dev/)
+
+**Interview AI** is a professional, full-stack web application built to help job seekers align their profiles with specific job descriptions. The system parses uploaded resumes, calculates match scores, highlights critical skill gaps, creates customized daily study plans, evaluates practice mock interviews in real-time, and generates tailored resumes exported as clean, ATS-compliant PDFs.
 
 [🌐 Live Demo](https://resume-analyser-eight-sage.vercel.app) •
 
@@ -27,14 +34,6 @@
 ### AI Mock Interview
 
 ![AI Mock Interview](./screenshots/mock-interview.png)
-
-[![React](https://img.shields.io/badge/Frontend-React%2019-blue?style=for-the-badge&logo=react)](https://react.dev/)
-[![Express](https://img.shields.io/badge/Backend-Express.js-green?style=for-the-badge&logo=express)](https://expressjs.com/)
-[![MongoDB](https://img.shields.io/badge/Database-MongoDB-darkgreen?style=for-the-badge&logo=mongodb)](https://www.mongodb.com/)
-[![Gemini AI](https://img.shields.io/badge/AI-Google%20Gemini-orange?style=for-the-badge&logo=google-gemini)](https://deepmind.google/technologies/gemini/)
-[![Puppeteer](https://img.shields.io/badge/PDF-Puppeteer-red?style=for-the-badge&logo=puppeteer)](https://pptr.dev/)
-
-**Interview AI** is a professional, full-stack web application built to help job seekers align their profiles with specific job descriptions. The system parses uploaded resumes, calculates match scores, highlights critical skill gaps, creates customized daily study plans, evaluates practice mock interviews in real-time, and generates tailored resumes exported as clean, ATS-compliant PDFs.
 
 ---
 
