@@ -3,6 +3,7 @@
 > An AI-powered career assistant that analyzes resumes against job descriptions,
 > identifies skill gaps, generates personalized preparation strategies,
 > and conducts role-specific mock interviews.
+
 [![React](https://img.shields.io/badge/Frontend-React%2019-blue?style=for-the-badge&logo=react)](https://react.dev/)
 [![Express](https://img.shields.io/badge/Backend-Express.js-green?style=for-the-badge&logo=express)](https://expressjs.com/)
 [![MongoDB](https://img.shields.io/badge/Database-MongoDB-darkgreen?style=for-the-badge&logo=mongodb)](https://www.mongodb.com/)
