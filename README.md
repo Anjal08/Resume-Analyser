@@ -1,5 +1,32 @@
-# Interview Master -- AI Interview Prep \& ATS Customizer
-> An AI-Powered Resume Analyzer, ATS Optimizer, and Mock Interview Simulator.
+# Interview Master — AI Interview Prep & ATS Customizer
+
+> An AI-powered career assistant that analyzes resumes against job descriptions,
+> identifies skill gaps, generates personalized preparation strategies,
+> and conducts role-specific mock interviews.
+
+[🌐 Live Demo](https://resume-analyser-eight-sage.vercel.app) •
+
+## 📸 Project Preview
+
+### Resume Analysis Dashboard
+
+![Resume Analysis Dashboard](./screenshots/dashboard.png)
+
+### AI-Powered Resume & ATS Analysis
+
+![Resume Analysis Results](./screenshots/analysis-overview.png)
+
+### Job-Specific Skill Matching
+
+![Skill Match Analysis](./screenshots/skill-match.png)
+
+### Personalized AI Preparation Roadmap
+
+![AI Preparation Roadmap](./screenshots/preparation-roadmap.png)
+
+### AI Mock Interview
+
+![AI Mock Interview](./screenshots/mock-interview.png)
 
 [![React](https://img.shields.io/badge/Frontend-React%2019-blue?style=for-the-badge&logo=react)](https://react.dev/)
 [![Express](https://img.shields.io/badge/Backend-Express.js-green?style=for-the-badge&logo=express)](https://expressjs.com/)
@@ -11,9 +38,43 @@
 
 ---
 
+## ✨ Key Features
+
+- 📄 **AI Resume Analysis**
+  - Analyze resumes against specific job descriptions.
+  - Generate ATS compatibility scores and detailed insights.
+
+- 🎯 **Job-Specific Skill Matching**
+  - Identify strongly matched, partially matched, and missing skills.
+  - Provide evidence and relevance scores for detected skills.
+
+- 🧠 **Personalized Preparation Roadmap**
+  - Generate structured preparation rounds based on identified skill gaps.
+
+- 🎤 **AI Mock Interviews**
+  - Generate role-specific technical and behavioral questions.
+  - Evaluate answers based on technical accuracy, problem solving,
+    project knowledge, communication, and confidence.
+
+- 📑 **ATS Resume Customization**
+  - Generate tailored resumes based on target job descriptions.
+  - Export customized resumes as ATS-friendly PDFs.
+
+- 📊 **Report History**
+  - Store and review previous resume analysis reports.
+
+  ## 💡 Why Interview Master?
+
+Interview Master combines resume optimization and interview preparation
+into a single workflow.
+
+Instead of providing only an ATS score, the system analyzes the candidate
+against a target role, identifies skill gaps, generates a preparation roadmap,
+and uses those insights to create a personalized mock interview.
+
 ## 🌟 Key Technical Highlights (What Recruiters Love)
 
-*   **Strictly Structured LLM Outputs**: Leverages the official `@google/genai` Node.js SDK and Gemini API model configurations. Uses **Zod Schema validation** and `zod-to-json-schema` to enforce type-safe JSON API outputs directly matching the Mongoose database layer, eliminating prompt parsing exceptions.
+*   **Strictly Structured LLM Outputs**: Leverages the official `@google/genai` Node.js SDK and Gemini API model configurations. Uses **Zod Schema validation** and `zod-to-json-schema` to enforce type-safe JSON API outputs directly matching the Mongoose database layer, reducing prompt parsing errors.
 *   **Headless PDF Engine (ATS-Friendly)**: Dynamically tailors a candidate's background into customized HTML/CSS resumes based on target JDs. Uses **Puppeteer** server-side to compile content to vector PDFs, preserving text selection and searchability for applicant tracking systems.
 *   **Stateless Cookie-Based Session Security**: Implements stateless JWT authentication. Tokens are stored in secure **HTTP-Only cookies** to protect against Cross-Site Scripting (XSS) attacks. Requests transmit cookies automatically using Axios `withCredentials` settings.
 *   **Revocation Blacklist**: Tracks logged-out sessions via a MongoDB collection with automated **Time-To-Live (TTL) indexes**, purging expired sessions automatically.
@@ -33,7 +94,7 @@
 
 ---
 
-## 📐 System Architecture & Data Flow
+## 🏗️ System Architecture
 
 ```mermaid
 graph TD
