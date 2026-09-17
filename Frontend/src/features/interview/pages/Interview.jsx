@@ -29,7 +29,7 @@ const itemVariants = {
 
 const Interview = () => {
     const navigate = useNavigate()
-    const { report, getReportById, loading, reports, getResumePdf } = useInterview()
+    const { report, getReportById, loading, reports, getResumePdf, downloadingPdf } = useInterview()
     const { interviewId } = useParams()
 
     const [expandedMatches, setExpandedMatches] = useState({});
@@ -103,8 +103,8 @@ const Interview = () => {
                     </div>
                 </div>
                 <div className="header-actions">
-                    <button className="btn-secondary" onClick={handleDownloadPdf}>
-                        <Download size={16}/> Export ATS PDF
+                    <button className="btn-secondary" onClick={handleDownloadPdf} disabled={downloadingPdf}>
+                        <Download size={16}/> {downloadingPdf ? 'Exporting PDF...' : 'Export ATS PDF'}
                     </button>
                     <button className="btn-primary" onClick={handleStartInterview}>
                         <PlayCircle size={16}/> Start Mock Interview

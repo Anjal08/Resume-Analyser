@@ -13,7 +13,7 @@ export const useInterview = () => {
         throw new Error("useInterview must be used within an InterviewProvider")
     }
 
-    const { loading, setLoading, generating, setGenerating, report, setReport, reports, setReports } = context
+    const { loading, setLoading, generating, setGenerating, downloadingPdf, setDownloadingPdf, report, setReport, reports, setReports } = context
 
     const generateReport = async ({ jobDescription, selfDescription, resumeFile }) => {
         setGenerating(true)
@@ -76,7 +76,7 @@ export const useInterview = () => {
     }
 
     const getResumePdf = async (interviewReportId, theme, aiInstruction) => {
-        setLoading(true)
+        setDownloadingPdf(true)
         try {
             const response = await generateResumePdf({ interviewReportId, theme, aiInstruction })
             
@@ -100,9 +100,9 @@ export const useInterview = () => {
         }
         catch (error) {
             console.error("Error downloading resume:", error)
-            alert("Failed to download the resume. Ensure the report has a valid resume attached.")
+            alert(error.message || "Failed to download the resume. Ensure the report has a valid resume attached.")
         } finally {
-            setLoading(false)
+            setDownloadingPdf(false)
         }
     }
 
@@ -196,6 +196,6 @@ export const useInterview = () => {
         }
     }, [ interviewId ])
 
-    return { loading, generating, report, reports, generateReport, getReportById, getReports, getResumePdf, getResumePdfBlob, deleteReport, evaluateMockAnswer, generateFinalFeedback, saveHistory, getHistory, getHistoryById, deleteHistory, getNextQuestion: getNextInterviewQuestion }
+    return { loading, generating, downloadingPdf, report, reports, generateReport, getReportById, getReports, getResumePdf, getResumePdfBlob, deleteReport, evaluateMockAnswer, generateFinalFeedback, saveHistory, getHistory, getHistoryById, deleteHistory, getNextQuestion: getNextInterviewQuestion }
 
 }
