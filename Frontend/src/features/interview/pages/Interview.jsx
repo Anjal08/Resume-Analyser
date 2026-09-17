@@ -41,11 +41,6 @@ const Interview = () => {
         setExpandedMatches(prev => ({ ...prev, [id]: !prev[id] }));
     };
 
-    useEffect(() => {
-        if (interviewId) {
-            getReportById(interviewId)
-        }
-    }, [interviewId])
 
     if (loading || !report) {
         return (
