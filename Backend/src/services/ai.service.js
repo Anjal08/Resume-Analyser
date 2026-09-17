@@ -7,6 +7,26 @@ const ai = new GoogleGenAI({
     apiKey: process.env.GOOGLE_GENAI_API_KEY
 })
 
+const MODEL_NAME = process.env.GEMINI_MODEL || "gemini-3.6-flash";
+
+async function callGeminiWithRetry(options, maxRetries = 3) {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            return await ai.models.generateContent(options);
+        } catch (error) {
+            const isRetryable = error.status === 503 || error.status === 429 || 
+                (error.message && (error.message.includes("high demand") || error.message.includes("temporarily unavailable") || error.message.includes("RESOURCE_EXHAUSTED")));
+            if (isRetryable && attempt < maxRetries) {
+                const delayMs = attempt * 2000;
+                console.warn(`Gemini call attempt ${attempt} failed with ${error.status || error.message}. Retrying in ${delayMs}ms...`);
+                await new Promise(res => setTimeout(res, delayMs));
+            } else {
+                throw error;
+            }
+        }
+    }
+}
+
 
 const intelligenceReportSchema = z.object({
     rawScores: z.object({
@@ -105,8 +125,8 @@ async function generateInterviewReport({ resume, selfDescription, jobDescription
 
     console.log("Calling Gemini with prompt length:", prompt.length);
     try {
-        const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
+        const response = await callGeminiWithRetry({
+            model: MODEL_NAME,
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -321,8 +341,8 @@ async function generateResumePdf({ resume, selfDescription, jobDescription, them
                         ${aiPromptInstruction}
                     `
 
-    const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+    const response = await callGeminiWithRetry({
+        model: MODEL_NAME,
         contents: prompt,
         config: {
             responseMimeType: "application/json",
@@ -391,8 +411,8 @@ async function evaluateMockInterviewAnswer({ question, userAnswer, intention, ex
     In addition, analyze the candidate's verbal delivery and communication based on the text. Assess their grammar, fluency, clarity, and confidence. Find and count any filler words used in the answer transcript (specifically: "um", "uh", "basically", "actually", "like").`
 
     try {
-        const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
+        const response = await callGeminiWithRetry({
+            model: MODEL_NAME,
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -449,8 +469,8 @@ async function generateFinalInterviewFeedback({ role, difficulty, qnaHistory }) 
     
     Generate a final, comprehensive performance report for this candidate. Provide an overall score out of 100, detailed communication and technical feedback paragraphs, a list of their core strengths, areas for improvement, and actionable suggestions for their next interview.`
 
-    const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+    const response = await callGeminiWithRetry({
+        model: MODEL_NAME,
         contents: prompt,
         config: {
             responseMimeType: "application/json",
@@ -502,8 +522,8 @@ async function generateNextQuestion({ resumeProfile, jobDescription, role, diffi
     console.log(`Prompt sent to LLM: \n${prompt.substring(0, 300)}...[TRUNCATED]`);
 
     try {
-        const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
+        const response = await callGeminiWithRetry({
+            model: MODEL_NAME,
             contents: prompt,
             config: {
                 responseMimeType: "application/json",

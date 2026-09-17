@@ -52,7 +52,12 @@ async function generateInterViewReportController(req, res) {
         })
     } catch (error) {
         console.error("Error generating report in backend:", error);
-        res.status(500).json({ message: "Failed to generate interview strategy due to AI generation error or server issue." });
+        const detailedMsg = (error.status === 429 || error.message?.includes("RESOURCE_EXHAUSTED") || error.message?.includes("quota"))
+            ? "AI rate limit or quota exceeded. Please wait a minute and try again."
+            : (error.status === 503 || error.message?.includes("high demand") || error.message?.includes("UNAVAILABLE"))
+            ? "AI model is currently experiencing high demand. Please try again in a moment."
+            : "Failed to generate interview strategy due to AI generation error or server issue.";
+        res.status(500).json({ message: detailedMsg });
     }
 
 }
