@@ -7,24 +7,38 @@ const ai = new GoogleGenAI({
     apiKey: process.env.GOOGLE_GENAI_API_KEY
 })
 
-const MODEL_NAME = process.env.GEMINI_MODEL || "gemini-3.6-flash";
+const PRIMARY_MODEL = process.env.GEMINI_MODEL || "gemini-3.5-flash-lite";
+const FALLBACK_MODELS = ["gemini-flash-lite-latest", "gemini-3.6-flash"];
+const ALL_MODELS = [PRIMARY_MODEL, ...FALLBACK_MODELS.filter(m => m !== PRIMARY_MODEL)];
+const MODEL_NAME = PRIMARY_MODEL;
 
-async function callGeminiWithRetry(options, maxRetries = 3) {
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-        try {
-            return await ai.models.generateContent(options);
-        } catch (error) {
-            const isRetryable = error.status === 503 || error.status === 429 || 
-                (error.message && (error.message.includes("high demand") || error.message.includes("temporarily unavailable") || error.message.includes("RESOURCE_EXHAUSTED")));
-            if (isRetryable && attempt < maxRetries) {
-                const delayMs = attempt * 2000;
-                console.warn(`Gemini call attempt ${attempt} failed with ${error.status || error.message}. Retrying in ${delayMs}ms...`);
-                await new Promise(res => setTimeout(res, delayMs));
-            } else {
-                throw error;
+async function callGeminiWithRetry(options, maxRetries = 2) {
+    const modelsToTry = [options.model || PRIMARY_MODEL, ...ALL_MODELS.filter(m => m !== (options.model || PRIMARY_MODEL))];
+    let lastError = null;
+
+    for (const model of modelsToTry) {
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                return await ai.models.generateContent({ ...options, model });
+            } catch (error) {
+                lastError = error;
+                const isRetryable = error.status === 503 || error.status === 429 || 
+                    (error.message && (error.message.includes("high demand") || error.message.includes("temporarily unavailable") || error.message.includes("RESOURCE_EXHAUSTED")));
+                if (isRetryable) {
+                    console.warn(`Gemini model ${model} attempt ${attempt} failed with ${error.status || error.message}.`);
+                    if (attempt < maxRetries) {
+                        await new Promise(res => setTimeout(res, 1000));
+                        continue;
+                    }
+                    console.warn(`Switching from ${model} to next fallback model...`);
+                    break;
+                } else {
+                    throw error;
+                }
             }
         }
     }
+    throw lastError;
 }
 
 
