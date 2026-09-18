@@ -47,6 +47,7 @@ const MockInterview = () => {
     const [audioUrl, setAudioUrl] = useState(null)
     const [recordingDuration, setRecordingDuration] = useState(0)
     const [isVoiceUsed, setIsVoiceUsed] = useState(false)
+    const [isPlayingAudio, setIsPlayingAudio] = useState(false)
 
     const recognitionRef = useRef(null)
     const mediaRecorderRef = useRef(null)
@@ -109,32 +110,67 @@ const MockInterview = () => {
         }
 
         try {
+            if (audioRef.current) {
+                audioRef.current.pause();
+                audioRef.current = null;
+            }
+            setIsPlayingAudio(false);
             audioChunksRef.current = [];
             setAudioUrl(null);
             setRecordingDuration(0);
             setIsVoiceUsed(true);
 
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            const mediaRecorder = new MediaRecorder(stream);
+            
+            const mimeType = (window.MediaRecorder && typeof MediaRecorder.isTypeSupported === 'function')
+                ? (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+                    ? 'audio/webm;codecs=opus'
+                    : MediaRecorder.isTypeSupported('audio/webm')
+                    ? 'audio/webm'
+                    : MediaRecorder.isTypeSupported('audio/mp4')
+                    ? 'audio/mp4'
+                    : '')
+                : '';
+
+            const mediaRecorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
             
             mediaRecorder.ondataavailable = (e) => {
-                if (e.data.size > 0) {
+                if (e.data && e.data.size > 0) {
                     audioChunksRef.current.push(e.data);
                 }
             };
 
             mediaRecorder.onstop = () => {
-                const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-                const url = URL.createObjectURL(audioBlob);
-                setAudioUrl(url);
+                const recordedType = mediaRecorder.mimeType || mimeType || 'audio/webm';
+                const audioBlob = new Blob(audioChunksRef.current, { type: recordedType });
+                
+                if (audioBlob.size > 0) {
+                    const url = URL.createObjectURL(audioBlob);
+                    setAudioUrl(url);
+
+                    const audio = new Audio(url);
+                    audio.preload = 'auto';
+                    audio.onended = () => setIsPlayingAudio(false);
+                    audio.onpause = () => setIsPlayingAudio(false);
+                    audio.onerror = (err) => {
+                        console.error("Audio playback error:", err);
+                        setIsPlayingAudio(false);
+                    };
+                    audioRef.current = audio;
+                }
                 stream.getTracks().forEach(track => track.stop());
             };
 
             mediaRecorderRef.current = mediaRecorder;
-            mediaRecorder.start();
+            // Timeslice collects chunks every 250ms ensuring all data is captured
+            mediaRecorder.start(250);
 
             if (recognitionRef.current) {
-                recognitionRef.current.start();
+                try {
+                    recognitionRef.current.start();
+                } catch (recErr) {
+                    console.warn("Speech recognition already active or unavailable:", recErr);
+                }
             }
 
             setIsRecording(true);
@@ -151,10 +187,19 @@ const MockInterview = () => {
 
     const stopRecording = () => {
         if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+            try {
+                if (mediaRecorderRef.current.state === 'recording') {
+                    mediaRecorderRef.current.requestData();
+                }
+            } catch (e) {
+                console.warn("Could not request data before stop:", e);
+            }
             mediaRecorderRef.current.stop();
         }
         if (recognitionRef.current) {
-            recognitionRef.current.stop();
+            try {
+                recognitionRef.current.stop();
+            } catch (e) {}
         }
         if (recIntervalRef.current) {
             clearInterval(recIntervalRef.current);
@@ -163,17 +208,63 @@ const MockInterview = () => {
     };
 
     const playRecording = () => {
-        if (audioUrl) {
-            if (!audioRef.current) {
-                audioRef.current = new Audio(audioUrl);
-            } else {
-                audioRef.current.src = audioUrl;
+        if (!audioUrl) return;
+
+        if (isPlayingAudio) {
+            if (audioRef.current) {
+                audioRef.current.pause();
+                audioRef.current.currentTime = 0;
             }
-            audioRef.current.play();
+            setIsPlayingAudio(false);
+            return;
+        }
+
+        if (!audioRef.current) {
+            const audio = new Audio(audioUrl);
+            audio.preload = 'auto';
+            audio.onended = () => setIsPlayingAudio(false);
+            audio.onpause = () => setIsPlayingAudio(false);
+            audio.onerror = (err) => {
+                console.error("Audio element error:", err);
+                setIsPlayingAudio(false);
+            };
+            audioRef.current = audio;
+        }
+
+        try {
+            audioRef.current.currentTime = 0;
+            const playPromise = audioRef.current.play();
+            if (playPromise !== undefined) {
+                playPromise
+                    .then(() => setIsPlayingAudio(true))
+                    .catch(err => {
+                        console.error("Audio play failed, retrying with fresh audio element:", err);
+                        const freshAudio = new Audio(audioUrl);
+                        freshAudio.onended = () => setIsPlayingAudio(false);
+                        freshAudio.onpause = () => setIsPlayingAudio(false);
+                        freshAudio.onerror = () => setIsPlayingAudio(false);
+                        audioRef.current = freshAudio;
+                        freshAudio.play()
+                            .then(() => setIsPlayingAudio(true))
+                            .catch(e => {
+                                console.error("Fresh audio play failed:", e);
+                                setIsPlayingAudio(false);
+                            });
+                    });
+            }
+        } catch (err) {
+            console.error("playRecording exception:", err);
+            setIsPlayingAudio(false);
         }
     };
 
     const reRecord = () => {
+        if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current.currentTime = 0;
+            audioRef.current = null;
+        }
+        setIsPlayingAudio(false);
         setInputText("");
         setAudioUrl(null);
         setRecordingDuration(0);
@@ -442,6 +533,12 @@ const MockInterview = () => {
             };
 
             // Reset voice state for next question
+            if (audioRef.current) {
+                audioRef.current.pause();
+                audioRef.current.currentTime = 0;
+                audioRef.current = null;
+            }
+            setIsPlayingAudio(false);
             setAudioUrl(null);
             setRecordingDuration(0);
             setIsVoiceUsed(false);
@@ -861,10 +958,36 @@ const MockInterview = () => {
             {/* Sticky Input Area */}
             <footer className='chat-footer'>
                 {audioUrl && (
-                    <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%', maxWidth: '800px', background: 'rgba(59, 130, 246, 0.05)', padding: '0.5rem 1rem', borderRadius: '0.75rem', border: '1px solid rgba(59, 130, 246, 0.2)', marginBottom: '0.75rem', boxSizing: 'border-box'}}>
+                    <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%', maxWidth: '800px', background: 'rgba(59, 130, 246, 0.08)', padding: '0.5rem 1rem', borderRadius: '0.75rem', border: '1px solid rgba(59, 130, 246, 0.25)', marginBottom: '0.75rem', boxSizing: 'border-box'}}>
                         <span style={{fontSize: '0.85rem', color: 'var(--text-secondary)'}}>Voice Answer recorded:</span>
-                        <button type="button" onClick={playRecording} style={{background: 'rgba(59, 130, 246, 0.15)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.3)', borderRadius: '6px', padding: '0.35rem 0.75rem', fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem'}}>
-                            <Volume2 size={14}/> Replay
+                        <button 
+                            type="button" 
+                            onClick={playRecording} 
+                            style={{
+                                background: isPlayingAudio ? 'rgba(59, 130, 246, 0.3)' : 'rgba(59, 130, 246, 0.15)', 
+                                color: isPlayingAudio ? '#93c5fd' : '#3b82f6', 
+                                border: '1px solid rgba(59, 130, 246, 0.4)', 
+                                borderRadius: '6px', 
+                                padding: '0.35rem 0.75rem', 
+                                fontSize: '0.85rem', 
+                                cursor: 'pointer', 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: '0.4rem',
+                                fontWeight: isPlayingAudio ? '600' : 'normal',
+                                transition: 'all 0.2s ease'
+                            }}
+                            title={isPlayingAudio ? "Click to stop replay" : "Click to listen to your voice recording"}
+                        >
+                            {isPlayingAudio ? (
+                                <>
+                                    <Square size={11} fill="#93c5fd"/> Stop
+                                </>
+                            ) : (
+                                <>
+                                    <Volume2 size={14}/> Replay
+                                </>
+                            )}
                         </button>
                         <button type="button" onClick={reRecord} style={{background: 'rgba(248, 113, 113, 0.15)', color: '#f87171', border: '1px solid rgba(248, 113, 113, 0.3)', borderRadius: '6px', padding: '0.35rem 0.75rem', fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem'}}>
                             <RotateCcw size={14}/> Re-record
