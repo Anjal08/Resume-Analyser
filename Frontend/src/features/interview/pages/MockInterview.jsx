@@ -14,6 +14,24 @@ const ROLES = [
     'Other'
 ]
 
+const getStorageKey = (id) => `mock_interview_session_${id}`;
+
+const loadSavedSession = (id) => {
+    if (!id) return null;
+    try {
+        const saved = localStorage.getItem(getStorageKey(id));
+        if (saved) {
+            const parsed = JSON.parse(saved);
+            if (parsed && Array.isArray(parsed.messages) && parsed.messages.length > 0) {
+                return parsed;
+            }
+        }
+    } catch (e) {
+        console.error("Failed to load interview session from localStorage", e);
+    }
+    return null;
+};
+
 const MockInterview = () => {
     const { interviewId } = useParams()
     const navigate = useNavigate()
@@ -21,33 +39,37 @@ const MockInterview = () => {
     const { user } = useAuth()
     const candidateName = user?.name || 'Anjali'
 
-    // Wizard/Interview States
-    const [ interviewStep, setInterviewStep ] = useState('initialLoading') // initialLoading -> modeSelection -> difficultySelection -> ready -> interviewing -> finished
-    const [ role, setRole ] = useState('Software Engineer')
-    const [ mode, setMode ] = useState('Quick Practice')
-    const [ difficulty, setDifficulty ] = useState('Intermediate')
+    const initialSession = useRef(loadSavedSession(interviewId)).current;
 
-    const [ activeQuestions, setActiveQuestions ] = useState([]) 
-    const [ currentIndex, setCurrentIndex ] = useState(0)
+    // Wizard/Interview States
+    const [ interviewStep, setInterviewStep ] = useState(() => initialSession?.interviewStep || 'initialLoading') // initialLoading -> modeSelection -> difficultySelection -> ready -> interviewing -> finished
+    const [ role, setRole ] = useState(() => initialSession?.role || 'Software Engineer')
+    const [ mode, setMode ] = useState(() => initialSession?.mode || 'Quick Practice')
+    const [ difficulty, setDifficulty ] = useState(() => initialSession?.difficulty || 'Intermediate')
+
+    const [ activeQuestions, setActiveQuestions ] = useState(() => initialSession?.activeQuestions || []) 
+    const [ currentIndex, setCurrentIndex ] = useState(() => initialSession?.currentIndex || 0)
     
     // Chat States
-    const [ messages, setMessages ] = useState([])
-    const [ qnaHistory, setQnaHistory ] = useState([])
+    const [ messages, setMessages ] = useState(() => initialSession?.messages || [])
+    const [ qnaHistory, setQnaHistory ] = useState(() => initialSession?.qnaHistory || [])
     const [ inputText, setInputText ] = useState("")
     const [ isTyping, setIsTyping ] = useState(false)
     const [ evalStatus, setEvalStatus ] = useState(null) // null | 'evaluating' | 'generating_final' 
-    const [ coveredTopics, setCoveredTopics ] = useState([])
+    const [ coveredTopics, setCoveredTopics ] = useState(() => initialSession?.coveredTopics || [])
     
     const messagesEndRef = useRef(null)
     const chatContainerRef = useRef(null)
 
     // Voice & Timer States
-    const [elapsedTime, setElapsedTime] = useState(0)
+    const [elapsedTime, setElapsedTime] = useState(() => initialSession?.elapsedTime || 0)
     const [isRecording, setIsRecording] = useState(false)
     const [audioUrl, setAudioUrl] = useState(null)
     const [recordingDuration, setRecordingDuration] = useState(0)
     const [isVoiceUsed, setIsVoiceUsed] = useState(false)
     const [isPlayingAudio, setIsPlayingAudio] = useState(false)
+
+    const prevInterviewIdRef = useRef(interviewId)
 
     const recognitionRef = useRef(null)
     const mediaRecorderRef = useRef(null)
@@ -62,8 +84,6 @@ const MockInterview = () => {
             timer = setInterval(() => {
                 setElapsedTime(prev => prev + 1);
             }, 1000);
-        } else {
-            setElapsedTime(0);
         }
         return () => clearInterval(timer);
     }, [interviewStep]);
@@ -288,27 +308,96 @@ const MockInterview = () => {
         }
     }, [ interviewId ])
 
-    // Reset State on Mount & Unmount
+    // Reset/Switch State only when interviewId actually changes
     useEffect(() => {
-        setMessages([]);
-        setInterviewStep('initialLoading');
-        setCurrentIndex(0);
-        setIsTyping(false);
-        setEvalStatus(null);
-        setInputText("");
-        setCoveredTopics([]);
-        
-        return () => {
-            setMessages([]);
-            setInterviewStep('initialLoading');
-            setActiveQuestions([]);
-            setCoveredTopics([]);
-        };
+        if (prevInterviewIdRef.current !== interviewId) {
+            prevInterviewIdRef.current = interviewId;
+            const saved = loadSavedSession(interviewId);
+            if (saved && saved.messages?.length > 0) {
+                setInterviewStep(saved.interviewStep || 'interviewing');
+                setRole(saved.role || 'Software Engineer');
+                setMode(saved.mode || 'Quick Practice');
+                setDifficulty(saved.difficulty || 'Intermediate');
+                setActiveQuestions(saved.activeQuestions || []);
+                setCurrentIndex(saved.currentIndex || 0);
+                setMessages(saved.messages);
+                setQnaHistory(saved.qnaHistory || []);
+                setCoveredTopics(saved.coveredTopics || []);
+                setElapsedTime(saved.elapsedTime || 0);
+            } else {
+                setInterviewStep('initialLoading');
+                setMessages([]);
+                setActiveQuestions([]);
+                setQnaHistory([]);
+                setCurrentIndex(0);
+                setCoveredTopics([]);
+                setElapsedTime(0);
+            }
+            setIsTyping(false);
+            setEvalStatus(null);
+            setInputText("");
+        }
     }, [interviewId]);
 
-    // Initial Welcome Flow
+    // Persist active interview session to localStorage
+    useEffect(() => {
+        if (!interviewId) return;
+
+        if (interviewStep === 'finished') {
+            try {
+                localStorage.removeItem(getStorageKey(interviewId));
+            } catch (e) {}
+            return;
+        }
+
+        if (messages && messages.length > 0) {
+            try {
+                const sessionData = {
+                    interviewStep,
+                    role,
+                    mode,
+                    difficulty,
+                    activeQuestions,
+                    currentIndex,
+                    messages,
+                    qnaHistory,
+                    coveredTopics,
+                    elapsedTime,
+                    savedAt: Date.now()
+                };
+                localStorage.setItem(getStorageKey(interviewId), JSON.stringify(sessionData));
+            } catch (e) {
+                console.error("Failed to persist session to localStorage", e);
+            }
+        }
+    }, [interviewId, interviewStep, role, mode, difficulty, activeQuestions, currentIndex, messages, qnaHistory, coveredTopics, elapsedTime]);
+
+    const handleRestartInterview = () => {
+        if (window.confirm("Are you sure you want to reset this interview and start over? Your current progress will be lost.")) {
+            try {
+                localStorage.removeItem(getStorageKey(interviewId));
+            } catch (e) {}
+            setMessages([]);
+            setActiveQuestions([]);
+            setQnaHistory([]);
+            setCurrentIndex(0);
+            setCoveredTopics([]);
+            setElapsedTime(0);
+            setIsTyping(false);
+            setEvalStatus(null);
+            setInputText("");
+            setInterviewStep('initialLoading');
+        }
+    };
+
+    // Initial Welcome Flow (only runs for fresh sessions without saved chat)
     useEffect(() => {
         if (report && interviewStep === 'initialLoading') {
+            const saved = loadSavedSession(interviewId);
+            if (saved && saved.messages?.length > 0) {
+                return;
+            }
+
             const foundRole = ROLES.find(r => report.title && report.title.toLowerCase().includes(r.toLowerCase()))
             const assignedRole = foundRole || report.title || 'Software Engineer'
             setRole(assignedRole)
@@ -337,7 +426,7 @@ const MockInterview = () => {
                 }])
             }, 800)
         }
-    }, [ report, interviewStep ])
+    }, [ report, interviewStep, interviewId ])
 
     if (loading || !report || interviewStep === 'initialLoading') {
         return (
@@ -655,6 +744,10 @@ const MockInterview = () => {
             }
             const savedHistory = await saveHistory(historyData);
             
+            try {
+                localStorage.removeItem(getStorageKey(interviewId));
+            } catch (e) {}
+
             setEvalStatus(null)
             setIsTyping(false)
             setInterviewStep('finished')
@@ -699,16 +792,42 @@ const MockInterview = () => {
                         </div>
                     )}
                 </div>
-                <div className='chat-progress'>
-                    {interviewStep === 'finished' ? 'Completed' : 
-                     interviewStep === 'interviewing' ? (
-                          <>
-                            <span>Question {currentIndex + 1} of 5</span>
-                            <div className='progress-bar-container'>
-                                <div className='progress-fill' style={{width: `${((currentIndex + 1)/5)*100}%`}}></div>
-                            </div>
-                          </>
-                      ) : 'Setup'}
+                <div className='chat-header-actions' style={{display: 'flex', alignItems: 'center', gap: '0.75rem'}}>
+                    <div className='chat-progress'>
+                        {interviewStep === 'finished' ? 'Completed' : 
+                         interviewStep === 'interviewing' ? (
+                              <>
+                                <span>Question {currentIndex + 1} of 5</span>
+                                <div className='progress-bar-container'>
+                                    <div className='progress-fill' style={{width: `${((currentIndex + 1)/5)*100}%`}}></div>
+                                </div>
+                              </>
+                          ) : 'Setup'}
+                    </div>
+                    {messages.length > 0 && interviewStep !== 'finished' && (
+                        <button 
+                            type="button"
+                            onClick={handleRestartInterview}
+                            className="btn-restart-interview"
+                            title="Reset interview and start over"
+                            style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.35rem',
+                                background: 'rgba(239, 68, 68, 0.1)',
+                                color: '#f87171',
+                                border: '1px solid rgba(239, 68, 68, 0.25)',
+                                borderRadius: '6px',
+                                padding: '0.25rem 0.55rem',
+                                fontSize: '0.75rem',
+                                fontWeight: '500',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            <RotateCcw size={13} />
+                            <span>Reset</span>
+                        </button>
+                    )}
                 </div>
             </header>
 
@@ -773,7 +892,12 @@ const MockInterview = () => {
                                                 <button onClick={() => navigate(`/interview/${interviewId}`)} className='btn-secondary'>
                                                     Back to Dashboard
                                                 </button>
-                                                <button onClick={() => window.location.reload()} className='btn-primary'>
+                                                <button onClick={() => {
+                                                    try {
+                                                        localStorage.removeItem(getStorageKey(interviewId));
+                                                    } catch (e) {}
+                                                    window.location.reload();
+                                                }} className='btn-primary'>
                                                     <RotateCcw size={16}/> Retake Interview
                                                 </button>
                                             </div>
