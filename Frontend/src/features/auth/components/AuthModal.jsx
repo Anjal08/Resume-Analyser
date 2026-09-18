@@ -12,8 +12,8 @@ const AuthModal = ({ isOpen, onClose }) => {
 
     const login = useGoogleLogin({
         onSuccess: async (tokenResponse) => {
-            const success = await handleGoogleLogin({ access_token: tokenResponse.access_token });
-            if (success) {
+            const result = await handleGoogleLogin({ access_token: tokenResponse.access_token });
+            if (result && (result.success || result === true)) {
                 onClose();
                 navigate('/');
             }

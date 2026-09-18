@@ -8,7 +8,6 @@ import { useOutletContext } from 'react-router'
 import { motion } from 'framer-motion'
 
 import ScanningLoader from '../../../components/ScanningLoader'
-import Loading from '../../../components/Loading'
 
 const Home = () => {
     const { loading, generating, generateReport, reports, deleteReport } = useInterview()
@@ -116,10 +115,6 @@ const Home = () => {
 
     if (generating) {
         return <ScanningLoader />
-    }
-
-    if (loading) {
-        return <Loading />
     }
 
     const containerVariants = {
@@ -378,7 +373,11 @@ const Home = () => {
                     <div className="widget glass-card">
                         <h3 className="widget-title"><History size={18} color="var(--text-secondary)"/> Previous Analyses</h3>
                         <div className="widget-content">
-                            {reports && reports.length > 0 ? (
+                            {loading && (!reports || reports.length === 0) ? (
+                                <div className="empty-state" style={{padding: '1.5rem', textAlign: 'center', color: 'var(--text-secondary)'}}>
+                                    <p>Loading history...</p>
+                                </div>
+                            ) : reports && reports.length > 0 ? (
                                 <ul style={{listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.75rem'}}>
                                     {reports.map((report) => (
                                         <li 

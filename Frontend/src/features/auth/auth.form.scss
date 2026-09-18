@@ -77,6 +77,30 @@ main {
                 }
             }
         }
+
+        .auth-error-popup {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            background: rgba(244, 63, 94, 0.15);
+            border: 1px solid rgba(244, 63, 94, 0.4);
+            color: #ffccd5;
+            padding: 0.85rem 1rem;
+            border-radius: 0.75rem;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            animation: fadeInShake 0.3s ease;
+
+            svg {
+                color: #f43f5e;
+                flex-shrink: 0;
+            }
+        }
+    }
+
+    @keyframes fadeInShake {
+        0% { opacity: 0; transform: translateY(-6px); }
+        100% { opacity: 1; transform: translateY(0); }
     }
 
     form {

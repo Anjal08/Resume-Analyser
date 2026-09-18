@@ -15,11 +15,12 @@ export const useAuth = () => {
         try {
             const data = await login({ email, password })
             setUser(data.user)
-            toast.success("Login successful!");
-            return true;
+            toast.success("Login successful!", { id: 'auth-success' });
+            return { success: true };
         } catch (err) {
-            toast.error(err.message || "Login failed");
-            return false;
+            const errorMsg = err.message || "Invalid email or password. Please check your credentials.";
+            toast.error(errorMsg, { id: 'auth-error', duration: 4000 });
+            return { success: false, error: errorMsg };
         } finally {
             setLoading(false)
         }
@@ -30,11 +31,12 @@ export const useAuth = () => {
         try {
             const data = await googleLogin(payload)
             setUser(data.user)
-            toast.success("Google Login successful!");
-            return true;
+            toast.success("Google Login successful!", { id: 'auth-success' });
+            return { success: true };
         } catch (err) {
-            toast.error(err.message || "Google Login failed");
-            return false;
+            const errorMsg = err.message || "Google Login failed";
+            toast.error(errorMsg, { id: 'auth-error', duration: 4000 });
+            return { success: false, error: errorMsg };
         } finally {
             setLoading(false)
         }
@@ -45,11 +47,12 @@ export const useAuth = () => {
         try {
             const data = await register({ username, email, password })
             setUser(data.user)
-            toast.success("Registration successful!");
-            return true;
+            toast.success("Registration successful!", { id: 'auth-success' });
+            return { success: true };
         } catch (err) {
-            toast.error(err.message || "Registration failed");
-            return false;
+            const errorMsg = err.message || "Registration failed. Please try again.";
+            toast.error(errorMsg, { id: 'auth-error', duration: 4000 });
+            return { success: false, error: errorMsg };
         } finally {
             setLoading(false)
         }

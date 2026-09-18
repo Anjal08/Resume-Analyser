@@ -25,7 +25,10 @@ export async function register({ username, email, password }) {
 
     } catch (err) {
         console.log(err)
-        throw err.response?.data || err
+        const errorMsg = err.response?.data?.message || err.message || "Registration failed"
+        const error = new Error(errorMsg)
+        error.data = err.response?.data
+        throw error
     }
 
 }
@@ -42,7 +45,10 @@ export async function login({ email, password }) {
 
     } catch (err) {
         console.log(err)
-        throw err.response?.data || err
+        const errorMsg = err.response?.data?.message || err.message || "Invalid email or password"
+        const error = new Error(errorMsg)
+        error.data = err.response?.data
+        throw error
     }
 
 }

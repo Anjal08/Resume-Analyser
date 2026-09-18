@@ -2,6 +2,7 @@ import { getAllInterviewReports, generateInterviewReport, getInterviewReportById
 import { useContext, useEffect } from "react"
 import { InterviewContext } from "../interview.context"
 import { useParams } from "react-router"
+import { useAuth } from "../../auth/hooks/useAuth"
 
 
 export const useInterview = () => {
@@ -188,13 +189,15 @@ export const useInterview = () => {
         }
     }
 
+    const { user } = useAuth()
+
     useEffect(() => {
         if (interviewId) {
             getReportById(interviewId)
-        } else {
+        } else if (user) {
             getReports()
         }
-    }, [ interviewId ])
+    }, [ interviewId, user ])
 
     return { loading, generating, downloadingPdf, report, reports, generateReport, getReportById, getReports, getResumePdf, getResumePdfBlob, deleteReport, evaluateMockAnswer, generateFinalFeedback, saveHistory, getHistory, getHistoryById, deleteHistory, getNextQuestion: getNextInterviewQuestion }
 

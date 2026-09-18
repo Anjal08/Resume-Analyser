@@ -1,8 +1,8 @@
-import React,{useState} from 'react'
+import React, { useState } from 'react'
 import { useNavigate, Link } from 'react-router'
 import { useAuth } from '../hooks/useAuth'
-import Loading from '../../../components/Loading'
 import { useGoogleLogin } from '@react-oauth/google'
+import { AlertCircle } from 'lucide-react'
 import "../auth.form.scss"
 
 const Register = () => {
@@ -11,30 +11,36 @@ const Register = () => {
     const [ username, setUsername ] = useState("")
     const [ email, setEmail ] = useState("")
     const [ password, setPassword ] = useState("")
+    const [ errorMsg, setErrorMsg ] = useState("")
 
-    const {loading, handleRegister, handleGoogleLogin} = useAuth()
+    const { loading, handleRegister, handleGoogleLogin } = useAuth()
     
     const handleSubmit = async (e) => {
         e.preventDefault()
-        const success = await handleRegister({username,email,password})
-        if (success) {
+        setErrorMsg("")
+        if (!username || !email || !password) {
+            setErrorMsg("Please provide username, email and password.")
+            return
+        }
+        const result = await handleRegister({ username, email, password })
+        if (result && (result.success || result === true)) {
             navigate("/")
+        } else {
+            setErrorMsg(result?.error || "Registration failed. Please check your details or login.")
         }
     }
 
     const login = useGoogleLogin({
         onSuccess: async (tokenResponse) => {
-            const success = await handleGoogleLogin({ access_token: tokenResponse.access_token });
-            if (success) {
+            const result = await handleGoogleLogin({ access_token: tokenResponse.access_token });
+            if (result && (result.success || result === true)) {
                 navigate('/');
             }
         },
-        onError: () => console.log('Google Login Failed')
+        onError: () => {
+            setErrorMsg("Google Registration Failed. Please try again.")
+        }
     });
-
-    if(loading){
-        return <Loading />
-    }
 
     return (
         <main>
@@ -56,28 +62,37 @@ const Register = () => {
 
                 <div className='or-divider'><span>OR</span></div>
 
+                {errorMsg && (
+                    <div className="auth-error-popup">
+                        <AlertCircle size={18} />
+                        <span>{errorMsg}</span>
+                    </div>
+                )}
+
                 <form onSubmit={handleSubmit}>
 
                     <div className="input-group">
                         <label htmlFor="username">Username</label>
                         <input
-                            onChange={(e) => { setUsername(e.target.value) }}
-                            type="text" id="username" name='username' placeholder='Enter username' />
+                            onChange={(e) => { setUsername(e.target.value); setErrorMsg("") }}
+                            type="text" id="username" name='username' placeholder='Enter username' required />
                     </div>
                     <div className="input-group">
                         <label htmlFor="email">Email</label>
                         <input
-                            onChange={(e) => { setEmail(e.target.value) }}
-                            type="email" id="email" name='email' placeholder='Enter email address' />
+                            onChange={(e) => { setEmail(e.target.value); setErrorMsg("") }}
+                            type="email" id="email" name='email' placeholder='Enter email address' required />
                     </div>
                     <div className="input-group">
                         <label htmlFor="password">Password</label>
                         <input
-                            onChange={(e) => { setPassword(e.target.value) }}
-                            type="password" id="password" name='password' placeholder='Enter password' />
+                            onChange={(e) => { setPassword(e.target.value); setErrorMsg("") }}
+                            type="password" id="password" name='password' placeholder='Enter password' required />
                     </div>
 
-                    <button className='button primary-button' >Register</button>
+                    <button type="submit" disabled={loading} className='button primary-button'>
+                        {loading ? 'Registering...' : 'Register'}
+                    </button>
 
                 </form>
 
